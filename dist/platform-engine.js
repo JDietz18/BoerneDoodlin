@@ -30,6 +30,7 @@ export class PlatformRun {
     this.shieldCharges=this.charms.shieldStart?1:0;this.magnetTime=0;this.feverTime=0;this.goldRushTime=0;this._feverCooldown=0;
     this.combo=0;this.bestCombo=0;this.multiplier=1;this.bestMultiplier=1;this.comboTime=0;
     this.hits=0;this.stomps=0;this.blocks=0;this.secrets=0;this.chests=0;this.checkpoints=0;this.dodged=0;this.nearMisses=0;this.springs=0;this.doubleJumps=0;
+    this.airStomps=0;this.bestStompChain=0;this.pops=0;this.vents=0;this._ventCooldown=0;this._rain=0;this._rainTimer=0;this._rainCount=0;this._rainSeed=(this.seed^0x9e3779b9)>>>0;this._wet=false;
     this.bossDefeated=!this.level.boss;this.checkpoint={id:'start',x:this.level.spawn.x,y:this.level.spawn.y};this.interaction=null;this.camera={x:0,y:0};
     this._config={levelId:this.levelId,characterId:this.characterId,gear:{...this.gear},assist:this.assist,seed:this.seed,remix:this.remix,charms:{...this.charms},dailyDate:this.dailyDate};
     this._stepPlatforms(0);
@@ -78,7 +79,7 @@ export class PlatformRun {
   }
   _step(dt){
     this.time+=dt;
-    for(const key of ['invincible','powerTime','magnetTime','feverTime','goldRushTime','_feverCooldown','comboTime','_jumpBuffer','_springCooldown'])this[key]=Math.max(0,this[key]-dt);
+    for(const key of ['invincible','powerTime','magnetTime','feverTime','goldRushTime','_feverCooldown','comboTime','_jumpBuffer','_springCooldown','_ventCooldown'])this[key]=Math.max(0,this[key]-dt);
     if(!this.comboTime&&this.combo){this.combo=0;this.multiplier=1;}
     this._gainCharge(dt*1.4);if(this.mode!=='running')return;
     this._stepPlatforms(dt);const p=this.player,oldX=p.x,oldFeet=p.y,wasGrounded=p.grounded;
@@ -91,11 +92,13 @@ export class PlatformRun {
     p.vy=Math.min(1100,p.vy+GRAVITY*dt);p.y+=p.vy*dt;p.grounded=false;this._groundId=null;
     if(p.vy>=0){
       let landing=null;for(const s of this.platforms)if(s.active!==false&&overlapX(p,s,2)&&oldFeet<=s.y+5&&p.y>=s.y&&(!landing||s.y<landing.y))landing=s;
-      if(landing){p.y=landing.y;p.vy=0;p.grounded=true;p.jumps=0;p.drop=false;this._groundId=landing.id;this._coyote=.12;if(!wasGrounded){this.emit('land',{x:p.x,y:p.y});if(this.mode!=='running')return;}if(this._jumpBuffer>0)this.jump();}
+      if(landing){const impact=p.vy,dropped=p.drop;p.y=landing.y;p.vy=0;p.grounded=true;p.jumps=0;p.drop=false;this._groundId=landing.id;this._coyote=.12;this.airStomps=0;if(!wasGrounded){this.emit('land',{x:p.x,y:p.y,speed:impact,drop:dropped,surface:landing.type});if(this.mode!=='running')return;}if(this._jumpBuffer>0)this.jump();}
     }else{
       for(const s of this.platforms){if(s.active===false||s.oneWay||!overlapX(p,s,3))continue;const bottom=s.y+s.h;if(oldFeet-H>=bottom-3&&p.y-H<=bottom){p.y=bottom+H;p.vy=70;this._hitBlock(s);break;}}
     }
+    if(p.y>528&&!this._wet){this._wet=true;this.emit('splash',{x:p.x,y:516,kind:this.zones.find(z=>p.x>=z.x&&p.x<=z.x+z.w)?.type||'water'});}else if(p.y<500)this._wet=false;
     if(p.y>this.height+110){this._damage('fall');if(this.mode!=='running')return;this._respawn();}
+    this._stepRain(dt);
     for(const e of this.entities){
       if(e.taken)continue;
       if(e.type==='enemy'){this._enemyStep(e,dt,oldFeet);}
@@ -104,8 +107,10 @@ export class PlatformRun {
       }else if(e.type==='checkpoint'){
         if(!e.active&&Math.abs(e.x-p.x)<48&&Math.abs(e.y-(p.y-H/2))<70){e.active=true;this.checkpoints++;this.checkpoint={id:e.id,x:e.spawnX,y:e.spawnY};this.score+=50;this.hearts=Math.min(this.maxHearts,this.hearts+1);this.emit('checkpoint',{x:e.x,y:e.y,checkpoints:this.checkpoints});}
       }else if(e.type==='goal'){if(Math.abs(e.x-p.x)<55&&Math.abs(e.y-(p.y-H/2))<110)this._tryGoal(e);}
+      else if(e.type==='balloon')this._balloonStep(e,oldFeet);
+      else if(e.type==='vent')this._ventStep(e);
       else if(e.type==='chest'){if(e.secret&&!e.revealed&&Math.abs(e.x-p.x)<250&&Math.abs(e.y-(p.y-H/2))<145){e.revealed=true;this.emit('secret-found',{x:e.x,y:e.y});}}
-      else if(!['block','sign'].includes(e.type))this._maybeCollect(e);
+      else if(!['block','sign'].includes(e.type)){if(e.rain){e.y+=e.vy*dt;e.life-=dt;if(e.life<=0||e.y>this.height+40){e.taken=true;continue;}}this._maybeCollect(e);}
       if(this.mode!=='running')return;
     }
     this.farthest=Math.max(this.farthest,p.x);this.distance=Math.max(0,this.farthest-this.level.spawn.x);this.camera.x=clamp(p.x-340,0,this.width-960);
@@ -122,14 +127,14 @@ export class PlatformRun {
     if(e.x<e.left){e.x=e.left;e.vx=Math.abs(e.vx);}if(e.x>e.right){e.x=e.right;e.vx=-Math.abs(e.vx);}
     const top=e.y-e.h/2,bottom=e.y+e.h/2;
     if(Math.abs(e.x-p.x)>W*.42+e.w*.43||p.y<=top||p.y-H>=bottom)return;
-    if(p.vy>0&&oldFeet<=top+18){p.y=top-2;p.vy=this.charms.stompBounce?-560:-420;p.grounded=false;p.jumps=1;this._groundId=null;this._coyote=0;this._stomp(e,false);}
+    if(p.vy>0&&oldFeet<=top+18){p.y=top-2;p.vy=this.charms.stompBounce?-560:-420;p.grounded=false;p.jumps=1;this._groundId=null;this._coyote=0;if(!(e.hurtTime>0)){this.airStomps++;this.bestStompChain=Math.max(this.bestStompChain,this.airStomps);}this._stomp(e,false);}
     else if(this.powerTime>0)this._stomp(e,true);
     else this._damage('enemy',e);
   }
   _stomp(e,powered){
     if(e.hurtTime>0)return;e.hp--;e.hurtTime=.8;this.stomps++;this._gainCharge(10+(this.charms.stompCharge?15:0));
-    const value=(e.subtype==='boss'?150:70)*(powered&&this.characterId==='spike'?3:1);this.score+=value;
-    this.emit(powered?'smash':'stomp',{x:e.x,y:e.y,kind:e.subtype,value,hp:e.hp});
+    const chain=powered?1:Math.max(1,this.airStomps),value=(e.subtype==='boss'?150:70)*(powered&&this.characterId==='spike'?3:1)+35*Math.min(5,chain-1);this.score+=value;
+    this.emit(powered?'smash':'stomp',{x:e.x,y:e.y,kind:e.subtype,value,hp:e.hp,chain});
     if(e.hp<=0){e.taken=true;e.dead=true;if(e.subtype==='boss'){this.bossDefeated=true;this.score+=500;this.emit('boss-defeated',{x:e.x,y:e.y,name:e.name});}}
   }
   _damage(reason,entity){
@@ -152,7 +157,7 @@ export class PlatformRun {
       this.combo++;this.bestCombo=Math.max(this.bestCombo,this.combo);this.comboTime=5.4+this.charms.comboGrace;this.multiplier=Math.min(5,1+Math.floor(this.combo/6));
       this.treats+=e.type==='gold'?3:1;if(e.type==='gold')this.gold++;this._gainCharge(e.type==='gold'?15:5);
       if(this.combo%6===0)this.emit('combo',{combo:this.combo,multiplier:this.multiplier});
-      if(this.combo>=18&&this._feverCooldown===0){this.feverTime=8;this._feverCooldown=22;this.emit('fever',{duration:8});}
+      if(this.combo>=18&&this._feverCooldown===0){this.feverTime=8;this._feverCooldown=22;this._rain=16;this._rainTimer=.35;this.emit('fever',{duration:8});}
       if(e.type==='gold'){this.goldRushTime=Math.min(12+this.charms.goldDuration*2,this.goldRushTime+4+this.charms.goldDuration);this.emit('gold-rush',{duration:this.goldRushTime,totalMultiplier:this.totalMultiplier});}
       this._recordMultiplier();value=Math.round((e.type==='gold'?100:10)*this.totalMultiplier);
     }else if(e.type==='key'){this.keys++;value=75;this._gainCharge(12);this.emit('key',{keys:this.keys,requiredKeys:this.requiredKeys,x:e.x,y:e.y});}
@@ -160,6 +165,34 @@ export class PlatformRun {
     else if(e.type==='shield'){this.shieldCharges=Math.min(2,this.shieldCharges+1);value=30;this.emit('pickup',{kind:'shield',charges:this.shieldCharges});}
     else if(e.type==='heart'){const healed=this.hearts<this.maxHearts;this.hearts=Math.min(this.maxHearts,this.hearts+1);value=healed?25:80;this.emit('heal',{hearts:this.hearts,healed});}
     this.score+=value;this.emit('collect',{kind:e.type,value,x:e.x,y:e.y,combo:this.combo,multiplier:this.multiplier,totalMultiplier:this.totalMultiplier});
+  }
+  // Treat balloons are one-way bounce pads: landing on one from above pops it,
+  // pays its treats, and keeps an air chain going. They never block or hurt.
+  _balloonStep(e,oldFeet){
+    const p=this.player,top=e.y-e.h/2;
+    if(p.vy<=0||Math.abs(e.x-p.x)>W*.5+e.w*.45||oldFeet>top+10||p.y<top)return;
+    p.y=top-1;p.vy=this.charms.stompBounce?-640:-560;p.grounded=false;p.jumps=1;p.drop=false;this._groundId=null;this._coyote=0;
+    e.taken=true;this.pops++;this.airStomps++;this.bestStompChain=Math.max(this.bestStompChain,this.airStomps);
+    const before=this.score,bonus=25*Math.min(6,this.airStomps-1);
+    for(let i=0;i<(e.reward||2);i++)this._collect({type:'bone',x:e.x,y:e.y,taken:false});
+    this.score+=bonus;this._gainCharge(4);
+    this.emit('pop',{x:e.x,y:e.y,chain:this.airStomps,value:this.score-before,skin:e.skin||0});
+  }
+  // Vents erupt on a steady rhythm inside some gaps. One that is erupting
+  // lifts anyone who has dropped below the trail, so it only ever helps.
+  _ventStep(e){
+    const p=this.player,phase=((this.time+(e.phase||0))%e.period)/e.period;e.erupting=phase<e.duty;e.cycle=phase;
+    if(!e.erupting||this._ventCooldown>0||p.y<486||Math.abs(p.x-e.x)>e.w/2+W*.3)return;
+    p.vy=-(e.lift||880);p.grounded=false;p.jumps=1;p.drop=false;this._groundId=null;this._coyote=0;this._ventCooldown=.6;this._wet=false;this.vents++;
+    this.emit('vent',{x:e.x,y:Math.min(p.y,520),skin:e.skin||0});
+  }
+  // A frenzy starts a short snack shower around the player.
+  _stepRain(dt){
+    if(this._rain<=0)return;this._rainTimer-=dt;if(this._rainTimer>0)return;
+    this._rainTimer=.17;this._rain--;this._rainSeed=(Math.imul(this._rainSeed,1664525)+1013904223)>>>0;
+    const r=this._rainSeed/4294967296,p=this.player;
+    if(this._rain===15)this.entities=this.entities.filter(e=>!(e.rain&&e.taken));
+    this.entities.push({id:`rain-${++this._rainCount}`,type:'bone',x:clamp(p.x+p.vx*.9+(r-.42)*560,30,this.width-30),y:Math.max(-40,p.y-470),w:26,h:24,taken:false,rain:true,vy:150+((r*7919)%1)*80,life:5.5});
   }
   _updateInteraction(){
     const p=this.player,reach=this.charms.secretMagnet?150:95;
@@ -184,12 +217,12 @@ export class PlatformRun {
     if(this.time-this._goalMessageAt>2){this._goalMessageAt=this.time;this.emit('locked',{keys:this.keys,requiredKeys:this.requiredKeys,bossDefeated:this.bossDefeated,text:this.keys<this.requiredKeys?'Two high-path keys open the snack stop.':'The snack guardian needs three stomps.',x:e.x,y:e.y});}return false;
   }
   _finish(won){if(this.mode!=='running'||this.finished)return;this.finished=true;this.mode=won?'won':'lost';this._move=0;if(won)this.score+=500+this.hearts*100+(this.hits===0?300:0);this.emit(won?'won':'lost',{result:this.result()});}
-  result(){return {runId:this.runId,mode:'platform',state:this.mode,levelId:this.levelId,worldIndex:this.worldIndex,stage:this.worldIndex,characterId:this.characterId,won:this.mode==='won',score:Math.round(this.score),treats:this.treats,gold:this.gold,keys:this.keys,bestCombo:this.bestCombo,bestMultiplier:this.bestMultiplier,hits:this.hits,stomps:this.stomps,secrets:this.secrets,blocks:this.blocks,checkpoints:this.checkpoints,chests:this.chests,dodged:this.dodged,nearMisses:this.nearMisses,powersUsed:this.powersUsed,hearts:this.hearts,maxHearts:this.maxHearts,time:Number(this.time.toFixed(3)),distance:Math.round(this.distance),letters:0,seed:this.seed,remix:this.remix,assist:this.assist,dailyDate:this.dailyDate,bossDefeated:this.bossDefeated,springs:this.springs,doubleJumps:this.doubleJumps};}
+  result(){return {runId:this.runId,mode:'platform',state:this.mode,levelId:this.levelId,worldIndex:this.worldIndex,stage:this.worldIndex,characterId:this.characterId,won:this.mode==='won',score:Math.round(this.score),treats:this.treats,gold:this.gold,keys:this.keys,bestCombo:this.bestCombo,bestMultiplier:this.bestMultiplier,hits:this.hits,stomps:this.stomps,secrets:this.secrets,blocks:this.blocks,checkpoints:this.checkpoints,chests:this.chests,dodged:this.dodged,nearMisses:this.nearMisses,powersUsed:this.powersUsed,hearts:this.hearts,maxHearts:this.maxHearts,time:Number(this.time.toFixed(3)),distance:Math.round(this.distance),letters:0,seed:this.seed,remix:this.remix,assist:this.assist,dailyDate:this.dailyDate,bossDefeated:this.bossDefeated,springs:this.springs,doubleJumps:this.doubleJumps,pops:this.pops,vents:this.vents,bestStompChain:this.bestStompChain};}
   snapshot(){
-    const fields=['time','distance','farthest','score','treats','gold','keys','hearts','charge','powerTime','powerDuration','powersUsed','invincible','shieldCharges','magnetTime','feverTime','goldRushTime','_feverCooldown','combo','bestCombo','multiplier','bestMultiplier','comboTime','hits','stomps','blocks','secrets','chests','checkpoints','dodged','nearMisses','springs','doubleJumps','bossDefeated','_groundId','_coyote'];
+    const fields=['time','distance','farthest','score','treats','gold','keys','hearts','charge','powerTime','powerDuration','powersUsed','invincible','shieldCharges','magnetTime','feverTime','goldRushTime','_feverCooldown','combo','bestCombo','multiplier','bestMultiplier','comboTime','hits','stomps','blocks','secrets','chests','checkpoints','dodged','nearMisses','springs','doubleJumps','pops','vents','bestStompChain','bossDefeated','_groundId','_coyote'];
     const state=Object.fromEntries(fields.map(key=>[key,this[key]]));
     return clone({version:1,kind:'platform',mode:this.mode,config:this._config,runId:this.runId,player:this.player,checkpoint:this.checkpoint,state,
-      entities:this.entities.filter(e=>e.taken||e.used||e.active||e.type==='enemy'||e.id.startsWith('block-heart-')||e.revealed).map(e=>({id:e.id,taken:!!e.taken,used:!!e.used,active:!!e.active,revealed:!!e.revealed,hp:e.hp,x:e.x,y:e.y,vx:e.vx,hurtTime:e.hurtTime,...(e.id.startsWith('block-heart-')?{spawn:e}:{})})),
+      entities:this.entities.filter(e=>!e.rain&&(e.taken||e.used||e.active||e.type==='enemy'||e.id.startsWith('block-heart-')||e.revealed)).map(e=>({id:e.id,taken:!!e.taken,used:!!e.used,active:!!e.active,revealed:!!e.revealed,hp:e.hp,x:e.x,y:e.y,vx:e.vx,hurtTime:e.hurtTime,...(e.id.startsWith('block-heart-')?{spawn:e}:{})})),
       platforms:this.platforms.filter(s=>s.used||s.active===false||s.crumbleTimer).map(s=>({id:s.id,used:!!s.used,active:s.active,crumbleTimer:s.crumbleTimer||0,respawnIn:s.respawnIn||0}))});
   }
   restore(saved){

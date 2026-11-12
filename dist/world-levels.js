@@ -46,7 +46,7 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
     platform(x+570+gap,480,span-570-gap,120,'ground');
     zones.push({x:x+570,y:480,w:gap,h:120,type:meta.worldIndex===2?'ravine':'water'});
     const shape=(section+meta.index+meta.worldIndex)%3;
-    sectionShapes.push({index:section,shape:['canopy-steps','spring-bridge','moving-terraces'][shape],x,width:span});
+    sectionShapes.push({index:section,shape:['canopy-steps','spring-bridge','moving-terraces'][shape],x,width:span,floorY,gap,bridged:section%4===3});
     let first;
     if(shape===0){
       first=platform(x+125,floorY-78,145,24,(section+meta.index)%4===2||meta.worldIndex===2?'crumble':'grass',{crumbleAfter:1.1});
@@ -95,5 +95,25 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
     entity('sign',finishStart+225,390,40,60,{text:'Three stomps from above—or a well-timed power—settle the snack dispute.'});
   }
   entity('goal',width-175,400,90,160,{requiredKeys:2,requiresBoss:meta.boss});
+  // Optional extras come last and use their own random stream, so every
+  // authored platform and entity above keeps its id, position, and order.
+  const extra=randomFor((layoutSeed^hash(meta.id+':extras'))>>>0),skin=meta.worldIndex;
+  const balloon=(x,top,reward=2)=>entity('balloon',x,top+25,56,50,{skin,reward});
+  let skyways=0;
+  for(const s of sectionShapes){
+    const next=sectionShapes[s.index+1],roll=extra(),ventRoll=extra(),phase=extra();
+    // Skyways string treat balloons between two high paths for an air route.
+    if(next&&s.index>=1&&(roll<.34+meta.worldIndex*.05||(s.index===sections-3&&!skyways))){
+      skyways++;for(let i=0;i<4;i++)balloon(s.x+742+i*168,(s.floorY-286)+(next.floorY-s.floorY)*(i/3)+(i%2?-10:0));
+    }
+    // Vents lift anyone who drops into the gap while they are erupting.
+    if(!s.bridged&&s.index>=(meta.globalIndex===0?5:1)&&ventRoll<.36+meta.worldIndex*.04)
+      entity('vent',s.x+570+s.gap/2,540,Math.min(96,s.gap-36),120,{skin,period:3.4+phase*1.1,duty:.42,phase:phase*5,lift:880});
+  }
+  // A balloon staircase and a treat arc make the last stretch a victory lap.
+  if(!meta.boss){
+    for(let i=0;i<5;i++)balloon(finishStart+420+i*150,388-i*58,i===4?4:2);
+    for(let i=0;i<6;i++)entity('bone',finishStart+1090+i*38,150+i*i*9,26,24);
+  }
   return {...meta,seed:layoutSeed,remix:Boolean(remix),width,height:600,spawn:{x:120,y:480},platforms,entities,zones,sectionShapes};
 }
