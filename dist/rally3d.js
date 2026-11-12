@@ -518,6 +518,9 @@ export class RallyRenderer {
     if (measure && show && canvas.offsetWidth) {
       style.left = `${canvas.offsetLeft}px`; style.top = `${canvas.offsetTop}px`; style.width = `${canvas.offsetWidth}px`; style.height = `${canvas.offsetHeight}px`;
       style.borderRadius = canvas.ownerDocument.defaultView.getComputedStyle(canvas).borderRadius;
+      // If the page's layout keeps the two canvases from lining up, go back to copying.
+      const mine = canvas.getBoundingClientRect(), under = this.surface.getBoundingClientRect?.();
+      if (under && ['left', 'top', 'width', 'height'].some(edge => Math.abs(mine[edge] - under[edge]) > 1.5)) { this._wantLayered = false; this._layered = false; style.display = 'none'; canvas.style.background = ''; this.resize(); }
     }
   }
   /** Diagnostics and tuning: turn direct WebGL presentation on or off. */
