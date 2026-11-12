@@ -226,3 +226,4 @@ body.playing #arena{touch-action:none}
  #app .coach-tip{max-width:46%;font-size:13px}
  #app .coach-tip small{display:none}
 }
+#app .toast{font-size:13px;bottom:calc(24px + var(--safe-b));z-index:60}
