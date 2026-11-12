@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#123d39"><meta name="description" content="One great road trip. Thirty platform adventures, top-down treasure trails, 3D RV rallies, and snack-stacking mini-games with Griffin and friends.">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Doodle Onward"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/assets/griffin-icon.png?v=20"><link rel="icon" type="image/png" href="/assets/griffin-icon.png?v=20"><link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="/style.css?v=20"><link rel="stylesheet" href="/minigames.css?v=20">
+<link rel="stylesheet" href="/style.css?v=20"><link rel="stylesheet" href="/minigames.css?v=20"><link rel="stylesheet" href="/play.css?v=20">
 <title>Doodle Onward • The Great Road Trip</title><script type="module" src="/game.js?v=20"></script>
 </head><body>
 <svg class="icons" aria-hidden="true"><defs>
@@ -25,6 +25,7 @@
 <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 21V4m-7 7 7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v17m-7-7 7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M12 12C4-1-4 20 6 17c4-1 8-15 14-11 8 6-1 19-8 6Z" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><path d="M8 2a6 6 0 0 1 5.7 8H22v4h-2v4h-4v-4h-2.3A6 6 0 1 1 8 2Zm0 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" transform="rotate(-45 12 12)"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </defs></svg>
 <div class="app" id="app" data-screen="home">
@@ -46,12 +47,23 @@
 <div class="hero-world" id="hero-world"><span>CHAPTER 01 / 05</span><strong>Rogue River</strong><small>The road begins with a good sniff.</small></div>
 <div class="crew-bar"><div class="crew-heading"><strong>Your adventure buddy</strong><span id="crew-perk">Griffin · Good-boy zoomies</span></div><div class="crew" id="crew" role="group" aria-label="Choose your character"></div></div>
 </div>
-<div class="run-ui" id="run-ui" hidden>
-<div class="run-top"><div class="run-identity"><span id="run-region">Rogue River</span><div id="hearts" class="hearts" role="img" aria-label="3 hearts"></div></div><div class="run-score"><strong id="score">0</strong><span id="combo">Let’s find snacks</span></div><button class="icon-button" id="pause-button" aria-label="Pause game"><svg><use href="#i-pause"/></svg></button></div>
-<div class="run-objectives" id="run-objectives"></div>
-<div class="bonus-stack" id="bonus-stack"></div>
-<div class="run-callout" id="run-callout" role="status" aria-live="polite"></div>
-<div class="run-bottom"><span id="mode-tip">Explore every little detour.</span><div class="trail-progress"><i id="progress-fill"></i></div><strong id="progress-text">0%</strong></div>
+<div class="hud" id="run-ui" hidden>
+<div class="hud-progress" aria-hidden="true"><i id="progress-fill"></i></div>
+<div class="hud-top">
+<button class="hud-pause" id="pause-button" aria-label="Pause game"><svg><use href="#i-pause"/></svg></button>
+<div class="hud-id"><span id="run-region">Rogue River</span><div id="hearts" class="hud-hearts" role="img" aria-label="3 hearts"></div></div>
+<div class="hud-timer" id="run-timer" hidden aria-label="Seconds left"></div>
+<strong class="hud-score" id="score">0</strong>
+<div class="hud-objectives" id="run-objectives"></div>
+<div class="stack" id="bonus-stack" role="img" aria-label="Bonus stack"></div>
+</div>
+<div class="hud-callout" id="run-callout" role="status" aria-live="polite"></div>
+<div class="hud-tip"><span id="mode-tip"></span><strong id="progress-text">0%</strong></div>
+<span class="sr-only" id="combo"></span>
+</div>
+<div class="touch" id="play-controls" hidden>
+<div class="pad" id="move-pad" tabindex="0" role="group" aria-label="Movement pad. Slide to change direction."><button id="up-button" class="pad-key pad-up" tabindex="-1" aria-label="Move up"><svg><use href="#i-up"/></svg></button><button id="left-button" class="pad-key pad-left" tabindex="-1" aria-label="Move left"><svg class="point-left"><use href="#i-arrow"/></svg></button><button id="right-button" class="pad-key pad-right" tabindex="-1" aria-label="Move right"><svg><use href="#i-arrow"/></svg></button><button id="down-button" class="pad-key pad-down" tabindex="-1" aria-label="Move down"><svg><use href="#i-down"/></svg></button></div>
+<div class="touch-actions"><button class="tbtn tbtn-hint" id="hint-button" aria-label="Show a trail hint"><strong id="hint-label">HINT · 3</strong></button><button class="tbtn tbtn-brake" id="brake-button" aria-label="Brake"><svg><use href="#i-down"/></svg><strong>BRAKE</strong></button><div class="tbtn-stack"><button class="tbtn tbtn-interact" id="interact-button" hidden aria-label="Interact with a nearby chest, sign, neighbor, or exit"><strong id="interact-label">OPEN</strong></button><button class="tbtn tbtn-power" id="power-button"><svg><use href="#i-bolt"/></svg><strong id="power-label">ZOOMIES</strong></button></div><button class="tbtn tbtn-jump" id="jump-button" aria-label="Jump. Tap again in the air for a double jump."><svg><use href="#i-up"/></svg><strong>JUMP</strong></button></div>
 </div>
 <div class="overlay pause-layer" id="pause-layer" hidden><div class="pause-card"><canvas id="pause-portrait" width="180" height="180" aria-hidden="true"></canvas><span class="eyebrow">PAWS ON PAUSE</span><h2>A little sniff break.</h2><p id="pause-detail">Your adventure will be right here.</p><button class="primary" id="resume-button">Keep going <svg><use href="#i-play"/></svg></button><div class="button-pair"><button class="secondary" id="restart-button">Start again</button><button class="secondary" id="quit-button">Back to camp</button></div></div></div>
 <div class="overlay result-layer" id="result-layer" hidden><article class="result-card" id="result-content"></article></div>
@@ -59,10 +71,6 @@
 <canvas id="celebrations" class="celebration-canvas" aria-hidden="true"></canvas>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </section>
-<div class="play-controls" id="play-controls" hidden>
-<div class="dpad" aria-label="Movement controls"><button id="up-button" class="control-button up-control" aria-label="Move up"><svg><use href="#i-up"/></svg></button><button id="left-button" class="control-button left-control" aria-label="Move left"><svg class="point-left"><use href="#i-arrow"/></svg><kbd>A / ←</kbd></button><button id="down-button" class="control-button down-control" aria-label="Move down or brake"><svg><use href="#i-down"/></svg><kbd>S / ↓</kbd></button><button id="right-button" class="control-button right-control" aria-label="Move right"><svg><use href="#i-arrow"/></svg><kbd>D / →</kbd></button></div>
-<div class="action-controls"><button class="control-button interact-control" id="interact-button"><strong id="interact-label">OPEN</strong><kbd>E</kbd></button><button class="control-button hint-control" id="hint-button" aria-label="Show a trail hint"><strong id="hint-label">HINT · 3</strong><kbd>H</kbd></button><button class="control-button power-control" id="power-button"><svg><use href="#i-bolt"/></svg><span><strong id="power-label">ZOOMIES</strong><i><b id="power-fill"></b></i></span><kbd>X</kbd></button><button class="control-button jump-control" id="jump-button"><svg><use href="#i-up"/></svg><span><strong>JUMP</strong><small>Tap twice for a double jump</small></span><kbd>SPACE</kbd></button></div>
-</div>
 <div id="camp-extras" class="camp-extras">
 <section class="route-section" id="world-map" aria-labelledby="world-map-title"><div class="section-heading"><div><span class="eyebrow">FIVE CHAPTERS. NO NEED TO RUSH.</span><h2 id="world-map-title">The road is full of stories.</h2></div><button class="pill-button" data-panel="passport"><svg><use href="#i-star"/></svg><span id="medal-total">0 / 90 medals</span></button></div><div class="world-tabs" id="world-tabs" role="group" aria-label="Choose a world"></div><div class="world-stage" id="world-stage"></div></section>
 <section class="detour-section" aria-labelledby="detour-title"><div class="section-heading"><div><span class="eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="detour-title">Take the scenic route.</h2></div><span class="section-note">Every detour earns treats & quest progress.</span></div><div class="activity-grid">

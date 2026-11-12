@@ -7,6 +7,7 @@ const CORE=[
   '/rally3d.js?v=20','/memory-game.js?v=20','/snack-engine.js?v=20',
   '/renderer.js?v=20','/adventure-engine.js?v=20','/characters.js?v=20',
   '/audio.js?v=20','/celebrations.js?v=20','/fx.js?v=20','/scout-view.js?v=20',
+  '/hud.js?v=20','/controls.js?v=20','/haptics.js?v=20','/compat.js?v=20','/play.css?v=20',
   '/assets/griffin-character-atlas.png?v=20','/assets/kevin-atlas.png?v=20',
   '/assets/mittens-atlas.png?v=20','/assets/spike-atlas.png?v=20',
   '/assets/family-rv.png','/assets/route-biomes.jpg',

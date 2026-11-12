@@ -1,0 +1,200 @@
+/* In-run layout: heads-up display, bonus-stack meter, and touch controls.
+   Phones play full screen with controls drawn over the bottom of the field.
+   Everything is scoped under #app so it wins over the older camp styles. */
+
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#app{--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);--hud-ink:#fff4db;--hud-glass:#123c38d9;--hud-line:#fff4db3d}
+#app .topbar{padding-top:var(--safe-t);box-sizing:content-box}
+body.playing{overflow:hidden;overscroll-behavior:none;touch-action:none}
+body.playing #arena,body.playing #arena *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#app #arena{touch-action:manipulation}
+body.playing #arena{touch-action:none}
+
+/* ---- heads-up display ------------------------------------------------ */
+#app .hud{position:absolute;inset:0;z-index:4;pointer-events:none;color:var(--hud-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+#app .hud::before{content:'';position:absolute;inset:0 0 auto;height:150px;background:linear-gradient(#0e2f2ecc,#0e2f2e66 55%,#0e2f2e00);pointer-events:none}
+#app .hud-progress{position:absolute;inset:0 0 auto;height:4px;background:#0000002e}
+#app .hud-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9fe3d4,#f6cc70);border-radius:0 3px 3px 0;transition:width .25s linear}
+#app .hud-top{position:absolute;top:calc(10px + var(--safe-t));left:calc(12px + var(--safe-l));right:calc(12px + var(--safe-r));display:grid;grid-template:"pause id id timer score" auto "obj obj stack stack stack" auto / auto auto minmax(0,1fr) auto auto;align-items:center;gap:6px 10px}
+#app .hud-pause{grid-area:pause;pointer-events:auto;flex:none;width:46px;height:46px;border-radius:50%;border:1.5px solid var(--hud-line);background:var(--hud-glass);color:var(--hud-ink);display:grid;place-items:center;padding:0;touch-action:manipulation}
+#app .hud-pause svg{width:20px;height:20px}
+#app .hud-pause:active{transform:scale(.94)}
+#app .hud-id{grid-area:id;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+#app #run-region{max-width:100%;font-size:12px;font-weight:800;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #0b2a28}
+#app .hud-hearts{display:flex;gap:3px;min-height:18px}
+#app .hud-hearts svg{width:18px;height:18px;fill:#ff8f7c;filter:drop-shadow(0 1px 0 #0b2a2899);transition:fill .2s,transform .2s}
+#app .hud-hearts svg.empty{fill:#0b2a2866;transform:scale(.82)}
+#app .hud-hearts.danger svg:not(.empty){animation:hud-beat .7s ease-in-out infinite}
+#app .hud-hearts svg.lost{animation:hud-lost .5s ease-out}
+#app .hud-objectives{grid-area:obj;display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-width:0}
+#app .obj{display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 7px;border-radius:12px;background:var(--hud-glass);border:1px solid var(--hud-line);font-size:11px;font-weight:800;white-space:nowrap}
+#app .obj svg{width:14px;height:14px;fill:#fff4db40;transition:fill .2s}
+#app .obj svg.on{fill:#f6cc70}
+#app .obj svg.bump,#app .obj.bump{animation:hud-pop .45s cubic-bezier(.2,1.6,.4,1)}
+#app .obj b{font-size:12px}
+#app .obj i{font-style:normal;font-weight:700;opacity:.86}
+#app .obj.parcel.on{background:#2f6b4ae6;border-color:#b8e994}
+#app #score{grid-area:score;justify-self:end;font:30px/1 var(--display);letter-spacing:.01em;text-shadow:0 2px 0 #0b2a28;transform-origin:100% 50%}
+#app #score.bump{animation:hud-pop .3s cubic-bezier(.2,1.6,.4,1)}
+
+/* ---- bonus stack meter ------------------------------------------------- */
+#app .stack{grid-area:stack;justify-self:end;display:flex;align-items:center;gap:6px;--tier-color:#fff4db}
+#app .stack[hidden]{display:none}
+#app .stack[data-tier="2"]{--tier-color:#fff0a8}
+#app .stack[data-tier="5"]{--tier-color:#ffd75e}
+#app .stack[data-tier="10"]{--tier-color:#ffb057}
+#app .stack[data-tier="20"]{--tier-color:#ff9ecb}
+#app .stack[data-tier="30"]{--tier-color:#ffffff}
+#app .stack-total{order:2;font:24px/1 var(--display);color:var(--tier-color);text-shadow:0 2px 0 #0b2a28;min-width:44px;text-align:right;transform-origin:100% 50%}
+#app .stack-total.bump{animation:hud-pop .35s cubic-bezier(.2,1.8,.4,1)}
+#app .stack[data-tier="0"] .stack-total{opacity:.55;font-size:18px}
+#app .stack[data-tier="30"] .stack-total{animation:hud-rainbow 1s linear infinite}
+#app .stack-layers{display:flex;gap:3px}
+#app .layer{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:48px;height:34px;border-radius:8px;background:#123c38b0;border:1px solid var(--hud-line);opacity:.62;transition:opacity .2s,background .2s,border-color .2s}
+#app .layer em{font:800 9px/1 Inter,system-ui,sans-serif;font-style:normal;letter-spacing:.04em}
+#app .layer b{font-size:12px;line-height:1;font-weight:900}
+#app .layer i{position:absolute;left:0;bottom:0;height:4px;width:calc(var(--fill,0)*100%);background:#fff4db8c;border-radius:0 3px 0 0}
+#app .layer.on{opacity:1;border-color:#fff4dbb3}
+#app .layer.on i{background:#fff}
+#app .layer.chain.on{background:#2f7f6ef2}
+#app .layer.frenzy.on{background:#c9603cf2}
+#app .layer.gold.on{background:#b98a1ff2}
+#app .layer.power.on{background:#3f77a8f2}
+#app .layer.bump{animation:hud-pop .4s cubic-bezier(.2,1.8,.4,1)}
+#app .layer.low{animation:hud-blink .45s steps(2) infinite}
+
+/* ---- timer, callout, tip ------------------------------------------------- */
+#app .hud-timer{grid-area:timer;min-width:52px;height:52px;padding:0 8px;border-radius:26px;display:grid;place-items:center;background:var(--hud-glass);border:2px solid var(--hud-line);font:28px/1 var(--display);text-shadow:0 2px 0 #0b2a28}
+#app .hud-timer[hidden]{display:none}
+#app .hud-timer.urgent{border-color:#ffb057;color:#ffd9a8}
+#app .hud-timer.final{border-color:#ff7a66;color:#ffd0c8;background:#7a2f28e6}
+#app .hud-timer.tick{animation:hud-tick .5s cubic-bezier(.2,1.6,.4,1)}
+#app .hud-callout{position:absolute;left:50%;top:calc(var(--hud-h,118px) + 6px);transform:translate(-50%,-6px);max-width:min(88%,460px);width:max-content;padding:8px 14px;border-radius:14px;border:1.5px solid #fff0bb;background:#1f4d42f2;font:15px/1.25 var(--display);text-align:center;opacity:0;transition:opacity .16s,transform .16s;pointer-events:none}
+#app .hud-callout.visible{opacity:1;transform:translate(-50%,0)}
+#app .hud-tip{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:12px;align-items:center;max-width:92%;padding:8px 14px;border-radius:12px;background:var(--hud-glass);border:1px solid var(--hud-line);font-size:12px;font-weight:600}
+#app .hud-tip strong{font-size:12px}
+#app[data-input=touch] .hud-tip{display:none}
+#app[data-activity=memory] .hud-tip{display:none}
+
+/* ---- touch controls ------------------------------------------------------ */
+#app .touch{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:0 calc(14px + var(--safe-r)) calc(14px + var(--safe-b)) calc(14px + var(--safe-l));pointer-events:none;touch-action:none}
+#app .touch[hidden],#app[data-input=keys] .touch{display:none}
+#app .pad,#app .tbtn{pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
+#app .pad{position:relative;flex:none;width:164px;height:86px;border-radius:26px;background:#123c388f;border:1.5px solid #fff4db59;box-shadow:0 2px 0 #0b2a2866;outline-offset:3px}
+#app .pad[hidden]{display:none}
+#app .pad::after{content:'';position:absolute;left:50%;top:14px;bottom:14px;width:1.5px;background:#fff4db40}
+#app .pad-key{position:absolute;top:0;bottom:0;width:50%;display:grid;place-items:center;border:0;background:none;color:#fff4db;padding:0;pointer-events:none;border-radius:24px;transition:background .08s}
+#app .pad-key svg{width:30px;height:30px;filter:drop-shadow(0 1px 0 #0b2a28)}
+#app .pad-left{left:0}
+#app .pad-right{right:0}
+#app .pad-up,#app .pad-down{display:none}
+#app .pad[data-dir=left] .pad-left,#app .pad[data-dir=right] .pad-right,#app .pad[data-dir=up] .pad-up,#app .pad[data-dir=down] .pad-down{background:#fff4db47}
+#app .pad[data-layout=cross]{width:156px;height:156px;border-radius:50%}
+#app .pad[data-layout=cross]::after{display:none}
+#app .pad[data-layout=cross] .pad-key{display:grid;width:52px;height:52px;top:auto;bottom:auto;left:auto;right:auto;border-radius:50%}
+#app .pad[data-layout=cross] .pad-key svg{width:24px;height:24px}
+#app .pad[data-layout=cross] .pad-up{left:52px;top:2px}
+#app .pad[data-layout=cross] .pad-down{left:52px;bottom:2px}
+#app .pad[data-layout=cross] .pad-left{left:2px;top:52px}
+#app .pad[data-layout=cross] .pad-right{right:2px;top:52px}
+#app .touch-actions{display:flex;align-items:flex-end;gap:10px}
+#app .tbtn{position:relative;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px solid #fff4db66;background:#123c38a8;color:#fff4db;border-radius:50%;padding:0;font-family:inherit;box-shadow:0 3px 0 #0b2a2866;transition:transform .06s}
+#app .tbtn[hidden]{display:none}
+#app .tbtn strong{font-size:11px;font-weight:900;letter-spacing:.03em;line-height:1.05;text-align:center;max-width:90%}
+#app .tbtn svg{width:22px;height:22px}
+#app .tbtn.pressed,#app .tbtn:active{transform:translateY(2px) scale(.96);box-shadow:0 1px 0 #0b2a2866}
+#app .tbtn-jump{width:92px;height:92px;background:#f6cc70eb;border-color:#fff4db;color:#3a2a10}
+#app .tbtn-jump svg{width:30px;height:30px}
+#app .tbtn-jump strong{font-size:12px}
+#app .tbtn-stack{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px}
+#app .tbtn-power{width:82px;height:82px;background:conic-gradient(#f6cc70 calc(var(--charge,0)*360deg),#123c38c7 0);border-color:#fff4db59}
+#app .tbtn-power::before{content:'';position:absolute;inset:5px;border-radius:50%;background:#123c38f0}
+#app .tbtn-power>*{position:relative}
+#app .tbtn-power strong{font-size:11px}
+#app .tbtn-power.ready{border-color:#fff4db;animation:hud-ready 1s ease-in-out infinite}
+#app .tbtn-power.ready::before{background:#2f7f6ef5}
+#app .tbtn-interact{width:82px;height:44px;border-radius:22px;background:#fff4dbf2;color:#1b5145;border-color:#fff;animation:hud-pop .3s cubic-bezier(.2,1.6,.4,1)}
+#app .tbtn-interact strong{font-size:12px}
+#app .tbtn-hint{width:64px;height:64px}
+#app .tbtn-hint.spent{opacity:.5}
+#app .tbtn-brake{width:76px;height:76px;background:#7a2f28c7}
+
+/* ---- phones: the run takes the whole screen ------------------------------- */
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
+ body.playing{position:fixed;inset:0;width:100%}
+ body.playing #app{padding:0;max-width:none}
+ body.playing #app .topbar{display:none}
+ body.playing #app #arena{position:fixed;inset:0;width:100%;height:100%;min-height:0;max-height:none;border-radius:0;border:0;box-shadow:none}
+ body.playing #app #memory-board{padding-top:calc(var(--hud-h,118px) + 4px)}
+ #app .overlay{overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l))}
+}
+@media (max-width:400px){
+ #app .pad{width:152px}
+ #app .tbtn-jump{width:86px;height:86px}
+ #app .tbtn-power{width:78px;height:78px}
+ #app .layer{width:44px}
+ #app #score{font-size:26px}
+}
+@media (max-height:560px) and (orientation:landscape){
+ #app .hud::before{height:96px}
+ #app .hud-top{top:calc(6px + var(--safe-t))}
+ #app .hud-top{grid-template:"pause id obj stack timer score" auto / auto auto minmax(0,1fr) auto auto auto}
+ #app .hud-objectives{justify-content:flex-start}
+ #app .pad{height:76px}
+ #app .pad[data-layout=cross]{width:136px;height:136px}
+ #app .pad[data-layout=cross] .pad-key{width:46px;height:46px}
+ #app .pad[data-layout=cross] .pad-up,#app .pad[data-layout=cross] .pad-down{left:45px}
+ #app .pad[data-layout=cross] .pad-left,#app .pad[data-layout=cross] .pad-right{top:45px}
+ #app .tbtn-jump{width:84px;height:84px}
+ #app .touch{padding-bottom:calc(10px + var(--safe-b))}
+ #app .result-card{max-width:560px}
+}
+/* Wide screens keep the framed field; controls only appear for touch. */
+@media (min-width:761px) and (min-height:561px){
+ #app[data-input=touch] .touch{padding:0 22px 20px}
+}
+
+/* ---- result card polish ----------------------------------------------------- */
+#app .result-medals svg.pending{opacity:.15;transform:scale(.6)}
+#app .result-medals svg.stamp{animation:hud-stamp .42s cubic-bezier(.2,1.9,.4,1)}
+#app .result-next{display:block;margin:6px auto 0;font-size:13px}
+
+/* ---- motion ----------------------------------------------------------------- */
+@keyframes hud-pop{0%{transform:scale(.7)}60%{transform:scale(1.22)}100%{transform:scale(1)}}
+@keyframes hud-lost{0%{transform:scale(1.5);fill:#fff}100%{transform:scale(.82)}}
+@keyframes hud-beat{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
+@keyframes hud-tick{0%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes hud-blink{0%{opacity:1}100%{opacity:.5}}
+@keyframes hud-ready{0%,100%{box-shadow:0 3px 0 #0b2a2866,0 0 0 0 #f6cc7000}50%{box-shadow:0 3px 0 #0b2a2866,0 0 0 9px #f6cc7055}}
+@keyframes hud-rainbow{0%{color:#ff9ecb}25%{color:#ffd75e}50%{color:#9fe3d4}75%{color:#b9a3f0}100%{color:#ff9ecb}}
+@keyframes hud-stamp{0%{transform:scale(2.4) rotate(-18deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
+
+/* ---- readable result and pause cards on phones ------------------------------- */
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
+ #app .result-card{padding:18px 16px}
+ #app .result-line{font-size:13px;line-height:1.5}
+ #app .result-stats span{font-size:11px;letter-spacing:.2px}
+ #app .result-goals>span{font-size:11px;padding:6px 9px}
+ #app .reward-line{font-size:14px}
+ #app .result-unlocks{font-size:12px}
+ #app .result-record{font-size:11px}
+ #app .result-card .eyebrow,#app .pause-card .eyebrow{font-size:11px}
+ #app .result-card .secondary,#app .pause-card .secondary{min-height:46px;font-size:13px}
+ #app .result-foot .text-button{font-size:13px;padding:8px 2px}
+ #app .pause-card p{font-size:14px}
+}
+@media (max-height:560px) and (orientation:landscape){
+ #app .result-card{width:min(760px,100%);column-count:2;column-gap:26px;padding:14px 22px;text-align:center}
+ #app .result-card>*{break-inside:avoid}
+ #app .result-card .result-goals,#app .result-card .result-stats+.reward-line{break-before:column}
+ #app .result-card h2{font-size:25px;margin:4px 0}
+ #app .result-line,#app .result-foot{display:none}
+ #app .result-stats{padding:8px 0}
+ #app .reward-line{margin:10px 0}
+ #app .result-card .button-pair{margin-top:8px}
+}
+
+/* Trail Scout shows three goals, so its stack meter takes a row of its own on narrow screens. */
+@media (max-width:560px){
+ #app[data-activity=scout] .hud-top{grid-template:"pause id id timer score" auto "obj obj obj obj obj" auto "stack stack stack stack stack" auto / auto auto minmax(0,1fr) auto auto}
+}

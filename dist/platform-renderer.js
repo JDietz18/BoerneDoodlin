@@ -14,11 +14,11 @@ const palettes=[
 // Each world's look for the platform adventure. `image` picks a quarter of the
 // painted biome sheet; everything else is drawn so it can move.
 const THEMES=[
- {name:'river',image:0,sky:['#7cc7e6','#d8f1e2'],sun:'#fff6c9',tint:null,haze:'#d8f1e255',soil:'#a9825a',soilDark:'#7d5f43',turf:'#6fb24e',turfLight:'#a6d970',ledge:'#9a7550',ledgeTop:'#7cba55',water:['#3fa9b8','#1f6f86'],foam:'#e4fbf5',mid:'#2f6b52',flower:'#ffe27a',ambient:'mist',balloon:['#bfeef0','#8fd6dc'],vent:'#dff8f6'},
- {name:'redwood',image:0,sky:['#8fbf9a','#dcebc4'],sun:'#fff2b8',tint:'#1f3d2a59',haze:'#cfe3b84d',soil:'#8a6247',soilDark:'#5f4332',turf:'#5c8f47',turfLight:'#8dbb5e',ledge:'#7a4f38',ledgeTop:'#6f9b4d',water:['#4c9c8f','#22594f'],foam:'#dff5e6',mid:'#27402f',flower:'#ff8f6b',ambient:'leaf',balloon:['#ffb866','#e88a3a'],vent:'#cfe8a2'},
- {name:'canyon',image:2,sky:['#62bfe0','#ffe6bd'],sun:'#fff3c2',tint:null,haze:'#ffe6bd47',soil:'#c06f48',soilDark:'#8c4a33',turf:'#e2a868',turfLight:'#f6cf8f',ledge:'#b5613f',ledgeTop:'#f0bd7e',water:['#6b3b2c','#3c1f1a'],foam:'#f2c59b',mid:'#a85436',flower:'#ffd35e',ambient:'dust',balloon:['#ff7a66','#ffd35e'],vent:'#f1cfa5'},
- {name:'mesa',image:2,sky:['#0f1f3d','#3a3f73'],sun:'#f6ecc4',tint:'#0d1c3aa8',haze:'#3a3f7340',soil:'#5d4a6b',soilDark:'#3b2f4a',turf:'#8b79a8',turfLight:'#c0b0dc',ledge:'#6a5a82',ledgeTop:'#b9a8dd',water:['#27386e','#141c3d'],foam:'#c9d4ff',mid:'#1c2444',flower:'#9fe8ff',ambient:'firefly',balloon:['#ffcf7a','#ff9a4d'],vent:'#cfd4ff'},
- {name:'boerne',image:3,sky:['#6fc3ea','#e8f6d9'],sun:'#fff5c4',tint:null,haze:'#e8f6d94a',soil:'#c9a678',soilDark:'#9a7a55',turf:'#86b84f',turfLight:'#b8dd6e',ledge:'#d9c9a3',ledgeTop:'#9cc75a',water:['#58c3c9','#2c8c99'],foam:'#effffa',mid:'#4f7a3a',flower:'#5a78e6',ambient:'petal',balloon:['#ff6b6b','#6f8ff0'],vent:'#e2fbf6'}
+ {name:'river',image:0,sky:['#7cc7e6','#d8f1e2'],sun:'#fff6c9',tint:null,haze:'#d8f1e255',soil:'#a9825a',soilDark:'#7d5f43',turf:'#6fb24e',turfLight:'#a6d970',ledge:'#9a7550',ledgeTop:'#7cba55',water:['#3fa9b8','#1f6f86'],foam:'#e4fbf5',mid:'#2f6b52',midAlpha:.4,flower:'#ffe27a',ambient:'mist',balloon:['#bfeef0','#8fd6dc'],vent:'#dff8f6'},
+ {name:'redwood',image:0,sky:['#8fbf9a','#dcebc4'],sun:'#fff2b8',tint:'#1f3d2a59',haze:'#cfe3b84d',soil:'#8a6247',soilDark:'#5f4332',turf:'#5c8f47',turfLight:'#8dbb5e',ledge:'#7a4f38',ledgeTop:'#6f9b4d',water:['#4c9c8f','#22594f'],foam:'#dff5e6',mid:'#1d2f23',midAlpha:.5,flower:'#ff8f6b',ambient:'leaf',balloon:['#ffb866','#e88a3a'],vent:'#cfe8a2'},
+ {name:'canyon',image:2,sky:['#62bfe0','#ffe6bd'],sun:'#fff3c2',tint:null,haze:'#ffe6bd47',soil:'#c06f48',soilDark:'#8c4a33',turf:'#e2a868',turfLight:'#f6cf8f',ledge:'#b5613f',ledgeTop:'#f0bd7e',water:['#6b3b2c','#3c1f1a'],foam:'#f2c59b',mid:'#7a3f2c',midAlpha:.6,flower:'#ffd35e',ambient:'dust',balloon:['#ff7a66','#ffd35e'],vent:'#f1cfa5'},
+ {name:'mesa',image:2,sky:['#0f1f3d','#3a3f73'],sun:'#f6ecc4',tint:'#0d1c3aa8',haze:'#3a3f7340',soil:'#5d4a6b',soilDark:'#3b2f4a',turf:'#8b79a8',turfLight:'#c0b0dc',ledge:'#6a5a82',ledgeTop:'#b9a8dd',water:['#27386e','#141c3d'],foam:'#c9d4ff',mid:'#1c2444',midAlpha:.66,flower:'#9fe8ff',ambient:'firefly',balloon:['#ffcf7a','#ff9a4d'],vent:'#cfd4ff'},
+ {name:'boerne',image:3,sky:['#6fc3ea','#e8f6d9'],sun:'#fff5c4',tint:null,haze:'#e8f6d94a',soil:'#c9a678',soilDark:'#9a7a55',turf:'#86b84f',turfLight:'#b8dd6e',ledge:'#d9c9a3',ledgeTop:'#9cc75a',water:['#58c3c9','#2c8c99'],foam:'#effffa',mid:'#3f6a30',midAlpha:.4,flower:'#5a78e6',ambient:'petal',balloon:['#ff6b6b','#6f8ff0'],vent:'#e2fbf6'}
 ];
 const TIER_COLORS=[[20,'#ff9ecb'],[10,'#ffb057'],[5,'#ffd75e'],[2,'#fff0a8'],[0,'#fff4d7']];
 const tierColor=m=>TIER_COLORS.find(([min])=>m>=min)[1];
@@ -35,7 +35,7 @@ export class AdventureRenderer extends Renderer {
  resetCamera(){
   this.camera=0;this.cameraY=0;this.fx=[];this.popups=[];this.lastRunId='';this._snap=true;
   this.anim={sx:1,sy:1,spin:0,idle:0,stepTime:0,lead:0,trail:[],trailTime:0,keys:[],lastFacing:1};
-  this.ghosts=[];this.bumps=new Map();this.raised=new Map();this._merge=null;this._compass=0;this._ventSpray=0;
+  this.ghosts=[];this.bumps=new Map();this.raised=new Map();this._merge=null;this._compass=0;this._ventSpray=0;this._chainShown=1;
  }
  // Small pre-rendered sprites avoid per-frame shadows and gradients.
  stamp(key,w,h,draw){
@@ -84,7 +84,7 @@ export class AdventureRenderer extends Renderer {
    case 'charged':j.ring(px,py,{color:'#fff2ab',radius:56,life:.5,width:3});break;
    case 'fever':j.flash('#ffb057',.2,.4);say('SNACK FRENZY ×2',-70,{color:'#ffb057',size:big(20),life:1.6});j.burst('star',px,py,{count:12});break;
    case 'gold-rush':say('GOLD RUSH ×2',-92,{color:'#ffd75e',size:big(19),life:1.4});break;
-   case 'combo':say(`CHAIN ×${e.multiplier}`,-66,{color:tierColor(e.multiplier),size:big(17),life:1.1});j.ring(px,py,{color:tierColor(e.multiplier),radius:60,life:.35,width:3});break;
+   case 'combo':if(e.multiplier<=(this._chainShown||1))break;this._chainShown=e.multiplier;say(`CHAIN ×${e.multiplier}`,-66,{color:tierColor(e.multiplier),size:big(17),life:1.1});j.ring(px,py,{color:tierColor(e.multiplier),radius:60,life:.35,width:3});break;
    case 'stack':say(e.total>=30?'MAX STACK 30×!':`${e.total}× STACK`,-112,{color:tierColor(e.total),size:big(e.total>=30?26:21),life:1.6});j.burst(e.total>=10?'gold':'star',px,py-20,{count:e.total>=30?40:16});if(e.total>=10)j.zoomPunch(.04);if(e.total>=30){j.flash('#ffd75e',.3,.5);j.slowMo(.45,.5);}break;
    case 'boss-defeated':j.slowMo(.3,.9);j.shake(.7);j.burst('confetti',x,y,{count:40});j.burst('gold',x,y,{count:24});j.flash('#ffffff',.35,.4);break;
    case 'locked':this._compass=6;j.popup(e.keys<e.requiredKeys?`${e.requiredKeys-e.keys} KEY${e.requiredKeys-e.keys===1?'':'S'} TO GO`:'BOUNCE THE BOSS FIRST',x,y-110,{color:'#ffe38c',size:big(16),life:1.8});break;
@@ -100,6 +100,7 @@ export class AdventureRenderer extends Renderer {
   if(e.kind==='gold'){j.burst('gold',x,y,{count:14});j.ring(x,y,{color:'#ffd75e',radius:70,life:.45,width:4});j.hitStop(.04);}
   else if(e.kind==='bone')j.burst('crumb',x,y,{count:total>=5?5:3,colors:total>=5?['#ffd75e','#fff0a8']:undefined});
   else if(e.kind==='heart')j.burst('heart',x,y,{count:5});
+  if((e.multiplier||1)<(this._chainShown||1))this._chainShown=e.multiplier||1;
   if(!e.value)return;
   const m=this._merge,now=j.clock;
   if(m&&m.popup.life>0&&now-m.at<.12&&Math.abs(m.x-x)<2&&Math.abs(m.y-y)<2){m.value+=e.value;m.popup.text=`+${m.value}`;m.popup.size=big(Math.min(24,13+Math.log10(m.value)*3));return;}
@@ -124,31 +125,29 @@ export class AdventureRenderer extends Renderer {
   if(this._skyKey!==key){const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,T.sky[0]);g.addColorStop(.75,T.sky[1]);g.addColorStop(1,T.sky[1]);this._sky=g;this._skyKey=key;}
   c.fillStyle=this._sky;c.fillRect(0,0,w,h);
   const night=index===3,sx=w*(night?.24:.78)-camX*.012,sy=Math.max(54,ground*.2)-camY*.02;
-  this.blit(c,this.glow(night?'#c9d4ff':'#fff6c9',90),sx,sy,1.5,night?.5:.85);
-  c.fillStyle=T.sun;c.beginPath();c.arc(sx,sy,night?22:30,0,TAU);c.fill();
+  if(night||!this.biomes){this.blit(c,this.glow(night?'#c9d4ff':'#fff6c9',90),sx,sy,1.5,night?.5:.85);c.fillStyle=T.sun;c.beginPath();c.arc(sx,sy,night?22:30,0,TAU);c.fill();}
   if(night){
    c.fillStyle=T.sky[0];c.beginPath();c.arc(sx+9,sy-6,21,0,TAU);c.fill();
    c.fillStyle='#fff4d8';for(let i=0;i<64;i++){const span=w+80,x=((hash01(i,1)*span-camX*.02)%span+span)%span-40,y=hash01(i,2)*ground*.82,tw=.35+.65*Math.abs(Math.sin(t*(.6+hash01(i,3))+i));c.globalAlpha=tw*(i%7?.7:1);const r=i%9?1.3:2.2;c.fillRect(x,y,r,r);}
    c.globalAlpha=1;
    // A shooting star crosses every few seconds.
    const cycle=(t*.21)%1,which=Math.floor(t*.21);if(cycle<.16&&!this.reducedMotion){const u=cycle/.16,x0=hash01(which,5)*w*.8+w*.1,y0=hash01(which,6)*ground*.35+20;c.strokeStyle='#fff4d8';c.globalAlpha=1-u;c.lineWidth=2;c.lineCap='round';c.beginPath();c.moveTo(x0+u*150,y0+u*60);c.lineTo(x0+u*150-46,y0+u*60-18);c.stroke();c.globalAlpha=1;}
-  }else{
-   for(let i=0;i<5;i++){const span=w+360,x=((hash01(i,9)*span-camX*.05-t*(5+i*2))%span+span)%span-180,y=26+hash01(i,10)*ground*.34,sc=.7+hash01(i,11)*.7;c.fillStyle=index===1?'#f4f6dc80':'#ffffffb0';for(let k=0;k<3;k++){c.beginPath();c.ellipse(x+k*30*sc,y-(k===1?11*sc:0),40*sc,17*sc+(k%2)*5,0,0,TAU);c.fill();}}
   }
   if(this.biomes){
-   const im=this.biomes,sw=im.width/2,sh=im.height/2,tileH=Math.max(h*.74,ground/.9),tileW=tileH*1.02,top=ground-tileH*.7-camY*.06,shift=((camX*.1)%(tileW*2)+tileW*2)%(tileW*2);
+   const im=this.biomes,sw=im.width/2,sh=im.height/2,tileH=Math.max(h,(ground+40)/.7),tileW=tileH*1.02,top=Math.min(0,ground-tileH*.7-camY*.06),shift=((camX*.1)%(tileW*2)+tileW*2)%(tileW*2);
    c.save();c.globalAlpha=night?.5:1;
    for(let n=-1;n<Math.ceil(w/tileW)+2;n++){const x=n*tileW-shift;c.save();c.translate(x,top);if(n%2!==0){c.translate(tileW,0);c.scale(-1,1);}c.drawImage(im,(T.image%2)*sw+1,Math.floor(T.image/2)*sh+1,sw-2,sh-2,0,0,tileW+1,tileH);c.restore();}
    c.restore();
    if(T.tint){c.fillStyle=T.tint;c.fillRect(0,0,w,h);}
   }else this.background(c,index,camX,t,w,h);
+  if(!night&&!this.reducedMotion)for(let i=0;i<4;i++){const span=w+360,x=((hash01(i,9)*span-camX*.05-t*(6+i*3))%span+span)%span-180,y=30+hash01(i,10)*ground*.3,sc=.7+hash01(i,11)*.7;c.fillStyle=index===1?'#f4f6dc59':'#ffffff73';for(let k=0;k<3;k++){c.beginPath();c.ellipse(x+k*30*sc,y-(k===1?11*sc:0),40*sc,17*sc+(k%2)*5,0,0,TAU);c.fill();}}
   const hazeKey=`${index}:${Math.round(ground)}`;if(this._hazeKey!==hazeKey){const g=c.createLinearGradient(0,ground-260,0,ground+20);g.addColorStop(0,T.haze.slice(0,7)+'00');g.addColorStop(1,T.haze.slice(0,7)+'8c');this._haze=g;this._hazeKey=hazeKey;}
   c.fillStyle=this._haze;c.fillRect(0,ground-260,w,h);
   // A closer silhouette layer gives the eye something that moves faster.
   c.fillStyle=T.mid;const step=index===1?210:index===2?340:260,off=camX*.34;
   for(let i=Math.floor(off/step)-1;i<(off+w)/step+1;i++){
-   const x=i*step-off+hash01(i,20)*step*.5,r=hash01(i,21),base=ground+8;c.globalAlpha=index===3?.62:.34;
-   if(index===1){const tw=26+r*22;c.fillRect(x,-10,tw,base+10);c.beginPath();c.ellipse(x+tw/2,base*.16,90+r*40,46,0,0,TAU);c.ellipse(x+tw/2-40,base*.34,70,34,0,0,TAU);c.fill();}
+   const x=i*step-off+hash01(i,20)*step*.5,r=hash01(i,21),base=ground+8;c.globalAlpha=T.midAlpha;
+   if(index===1){const tw=30+r*26;c.fillRect(x,-10,tw,base+10);c.fillRect(x-7,base-14,tw+14,22);c.globalAlpha=T.midAlpha*.45;c.fillRect(x+tw*.62,-10,tw*.16,base);c.globalAlpha=T.midAlpha;for(let k=0;k<3;k++){const by=base*(.18+k*.24)+r*30,dir=(i+k)%2?1:-1;c.beginPath();c.moveTo(x+tw/2,by);c.lineTo(x+tw/2+dir*(70+r*40),by-18);c.lineTo(x+tw/2+dir*(60+r*30),by+4);c.fill();}}
    else if(index===2||index===3){const mw=120+r*150,mh=90+r*150;c.beginPath();c.moveTo(x,base);c.lineTo(x+mw*.1,base-mh);c.lineTo(x+mw*.42,base-mh-10);c.lineTo(x+mw*.5,base-mh*.72);c.lineTo(x+mw*.82,base-mh*.7);c.lineTo(x+mw,base);c.fill();if(index===3&&r>.45){const cx=x+mw+50,ch=70+r*50;c.fillRect(cx,base-ch,12,ch);c.fillRect(cx-16,base-ch*.62,16,9);c.fillRect(cx-16,base-ch*.8,9,ch*.2);c.fillRect(cx+12,base-ch*.5,15,9);c.fillRect(cx+19,base-ch*.72,9,ch*.24);}}
    else{const th=110+r*120,tw=index===4?130+r*60:70+r*30;if(index===4){c.fillRect(x+tw/2-9,base-th*.55,18,th*.55);c.beginPath();c.ellipse(x+tw/2,base-th*.66,tw*.62,th*.32,0,0,TAU);c.ellipse(x+tw*.2,base-th*.52,tw*.36,th*.2,0,0,TAU);c.ellipse(x+tw*.82,base-th*.54,tw*.34,th*.2,0,0,TAU);c.fill();}else{c.fillRect(x+tw/2-5,base-th*.3,10,th*.3);for(let k=0;k<4;k++){c.beginPath();c.moveTo(x+tw/2,base-th+k*th*.17);c.lineTo(x+tw/2+tw*(.22+k*.1),base-th*.72+k*th*.19);c.lineTo(x+tw/2-tw*(.22+k*.1),base-th*.72+k*th*.19);c.fill();}}}
   }
