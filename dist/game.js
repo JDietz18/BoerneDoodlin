@@ -327,6 +327,10 @@ window.addEventListener('orientationchange',()=>{if(screen==='run')pause();contr
 // iPhone only starts sound from a finished tap, so listen for those as well.
 for(const name of ['pointerup','touchend','click','keydown'])window.addEventListener(name,()=>{if(journey.state.settings.sound)gestureAudio();},{passive:true});
 document.addEventListener('gesturestart',e=>{if(screen!=='home')e.preventDefault();});
+// On iPhone Safari a touch that begins on the field must not start a page
+// gesture (back-swipe from the left edge, where the run thumb rests, or a
+// double-tap zoom). Pointer events still arrive as usual.
+for(const field of [$('game'),$('rally-canvas')])for(const name of ['touchstart','touchmove'])field.addEventListener(name,e=>{if(screen==='run'&&e.cancelable)e.preventDefault();},{passive:false});
 document.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&inputMode!=='touch')setInputMode('touch');},{passive:true});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 function checkUpdate(){if(swRegistration?.waiting&&['home','result'].includes(screen))swRegistration.waiting.postMessage({type:'SKIP_WAITING'});}
