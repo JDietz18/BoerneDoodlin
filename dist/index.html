@@ -4,9 +4,9 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d39"><meta name="description" content="One great road trip. Thirty platform adventures, top-down treasure trails, 3D RV rallies, and snack-stacking mini-games with Griffin and friends.">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Doodle Onward"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="/assets/griffin-icon.png?v=21"><link rel="icon" type="image/png" href="/assets/griffin-icon.png?v=21"><link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="/style.css?v=21"><link rel="stylesheet" href="/minigames.css?v=21"><link rel="stylesheet" href="/play.css?v=21">
-<title>Doodle Onward • The Great Road Trip</title><script type="module" src="/game.js?v=21"></script>
+<link rel="apple-touch-icon" href="/assets/griffin-icon.png?v=22"><link rel="icon" type="image/png" href="/assets/griffin-icon.png?v=22"><link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/style.css?v=22"><link rel="stylesheet" href="/minigames.css?v=22"><link rel="stylesheet" href="/play.css?v=22"><link rel="stylesheet" href="/camp.css?v=22">
+<title>Doodle Onward • The Great Road Trip</title><script type="module" src="/game.js?v=22"></script>
 </head><body>
 <svg class="icons" aria-hidden="true"><defs>
 <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="5" cy="8" rx="3" ry="4" transform="rotate(-25 5 8)"/><ellipse cx="11" cy="5" rx="3" ry="4"/><ellipse cx="18" cy="7" rx="3" ry="4" transform="rotate(22 18 7)"/><ellipse cx="21" cy="13" rx="2.5" ry="3.5" transform="rotate(25 21 13)"/><path d="M5 16c2-6 10-7 13 0 5 8-5 5-6 5S1 24 5 16Z"/></symbol>
@@ -40,7 +40,7 @@
 <canvas id="rally-canvas" tabindex="0" hidden aria-label="3D RV Rally. Steer with Left and Right or A and D, brake with Down or S, and boost with X."></canvas>
 <div id="memory-board" hidden></div>
 <div class="home-screen" id="home-screen">
-<div class="home-copy"><span class="eyebrow"><i></i> OREGON TO TEXAS. EVERY PAW COUNTS.</span><h1>Doodle<br><em>Onward.</em></h1><p class="home-intro">Big worlds. Little detours.<br> A ridiculously good adventure.</p><div class="adventure-tags"><span>2D platforming</span><span>Top-down quests</span><span>3D rally</span></div>
+<div class="home-copy"><span class="eyebrow"><i></i> OREGON TO TEXAS. EVERY PAW COUNTS.</span><h1>Doodle<br><em>Onward.</em></h1><p class="home-intro">Big worlds. Little detours.<br> A ridiculously good adventure.</p><div class="adventure-tags" id="adventure-tags"></div>
 <button class="primary play-main" id="play-button" disabled><span class="play-icon"><svg><use href="#i-play"/></svg></span><span><strong id="play-label">Packing the snacks…</strong><small id="play-detail">Five worlds. Thirty adventures. Your pace.</small></span><svg><use href="#i-arrow"/></svg></button>
 <button class="route-link" data-nav="map">Pick your next detour <svg><use href="#i-arrow"/></svg></button></div>
 <div class="hero-note"><svg><use href="#i-paw"/></svg><span>Adventure level:<br><b>very good dog.</b></span></div>
@@ -74,12 +74,7 @@
 </section>
 <div id="camp-extras" class="camp-extras">
 <section class="route-section" id="world-map" aria-labelledby="world-map-title"><div class="section-heading"><div><span class="eyebrow">FIVE CHAPTERS. NO NEED TO RUSH.</span><h2 id="world-map-title">The road is full of stories.</h2></div><button class="pill-button" data-panel="passport"><svg><use href="#i-star"/></svg><span id="medal-total">0 / 90 medals</span></button></div><div class="world-tabs" id="world-tabs" role="group" aria-label="Choose a world"></div><div class="world-stage" id="world-stage"></div></section>
-<section class="detour-section" aria-labelledby="detour-title"><div class="section-heading"><div><span class="eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="detour-title">Take the scenic route.</h2></div><span class="section-note">Every detour earns treats & quest progress.</span></div><div class="activity-grid">
-<button class="activity-card scout-card" data-start-mode="scout"><span class="activity-art scout-art"><i></i><i></i><i></i><b>✦</b><span>↗</span></span><span class="activity-copy"><small>2D TOP-DOWN · EXPLORE</small><strong>Trail Scout</strong><span>Secret treasure. Curious neighbors.<br>One wonderfully twisty trail.</span><b>Go exploring <svg><use href="#i-arrow"/></svg></b></span></button>
-<button class="activity-card rally-card" data-start-mode="rally"><span class="activity-art rally-art"><i></i><i></i><b>RV</b><span>✦</span></span><span class="activity-copy"><small>3D · STEER & STACK</small><strong>RV Rally</strong><span>Weave through the wide-open road.<br>Find your line. Hit the boost.</span><b>Hit the road <svg><use href="#i-arrow"/></svg></b></span></button>
-<button class="activity-card snack-card" data-start-mode="snack"><span class="activity-art snack-art"><svg><use href="#i-bone"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-bone"/></svg><b>30×</b></span><span class="activity-copy"><small>45 SECONDS · CATCH & COMBO</small><strong>Snack Storm</strong><span>Catch a little chaos.<br>Stack a whole lot of bonus.</span><b>Make it rain <svg><use href="#i-arrow"/></svg></b></span></button>
-<button class="activity-card memory-card" data-start-mode="memory"><span class="activity-art memory-art"><i>?</i><i>★</i><i>★</i></span><span class="activity-copy"><small>MINI-GAME · MATCH & MULTIPLY</small><strong>Camp Pairs</strong><span>A quick game of paws and memory.<br>Perfect pairs keep the streak alive.</span><b>Flip for fun <svg><use href="#i-arrow"/></svg></b></span></button>
-</div></section>
+<section class="detour-section arcade-section" aria-labelledby="detour-title"><div class="section-heading"><div><span class="eyebrow">QUICK PLAY. NO WAITING.</span><h2 id="detour-title">Mini games</h2></div><span class="section-note arcade-count"><b>4</b> games · every one pays treats</span></div><div class="arcade" id="arcade"></div></section>
 <section class="camp-bottom"><article class="daily-card"><div><span class="eyebrow">TODAY’S LITTLE ADVENTURE</span><h3 id="daily-title">A fresh road every day.</h3><p id="daily-detail">A seeded challenge with a bonus reward.</p></div><button class="secondary" id="daily-button">Play today <svg><use href="#i-arrow"/></svg></button></article><article class="quest-preview" id="quest-preview"></article></section>
 <nav class="mobile-nav" aria-label="Camp menu"><button data-panel="quests"><svg><use href="#i-star"/></svg>Quests</button><button data-panel="gear"><svg><use href="#i-bag"/></svg>Backpack</button><button data-panel="passport"><svg><use href="#i-trophy"/></svg>Passport</button></nav>
 </div>

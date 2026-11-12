@@ -1,0 +1,148 @@
+/* Camp screen look: bold ink outlines, hard offset shadows, loud colour blocks.
+   Loaded last, scoped under #app, and limited to the camp screen and its
+   panels. Nothing here touches a run. Every animation stops for Reduced motion. */
+
+#app{--ink:#10231f;--paper:#fff7e6;--pop:#ff5a3c;--zap:#ffd23f;--mint:#43e0b8;--grape:#7b5cff;--sky:#4cc3ff;--edge:3px solid var(--ink);--drop:5px 5px 0 var(--ink)}
+
+/* ---- headings and small labels --------------------------------------- */
+#app .camp-extras .eyebrow{display:inline-block;padding:4px 9px;border-radius:6px;background:var(--ink);color:var(--zap);font-weight:900;letter-spacing:.06em;transform:rotate(-1.2deg)}
+#app .camp-extras .section-heading h2{font-size:clamp(30px,8.4vw,44px);line-height:1;text-transform:uppercase;letter-spacing:-.01em;color:var(--ink);margin-top:8px}
+#app .camp-extras .section-heading h2::after{content:'';display:block;width:64px;height:8px;margin-top:8px;border-radius:4px;background:var(--pop);transform:rotate(-1.5deg)}
+#app .camp-extras .section-note{font-weight:800;color:var(--ink)}
+#app .arcade-count b{display:inline-grid;place-items:center;min-width:26px;height:26px;margin-right:4px;border-radius:50%;background:var(--pop);color:#fff;font-size:14px}
+
+/* ---- hero: the one big button ---------------------------------------- */
+#app .home-screen .play-main{background:var(--zap);color:var(--ink);border:var(--edge);border-radius:18px;box-shadow:var(--drop);transition:transform .08s,box-shadow .08s}
+#app .home-screen .play-main:active{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--ink)}
+#app .home-screen .play-main strong{font-size:19px;letter-spacing:-.01em}
+#app .home-screen .play-main .play-icon{background:var(--ink);color:var(--zap);animation:camp-nudge 1.6s ease-in-out infinite}
+#app .home-screen .play-main:disabled{filter:saturate(.4);box-shadow:2px 2px 0 var(--ink)}
+#app .adventure-tags{display:flex;flex-wrap:wrap;gap:8px}
+#app .adventure-tags span{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:2px solid #fff7e6;border-radius:999px;background:#10231fb8;color:#fff7e6;font-size:12px;font-weight:800}
+#app .adventure-tags svg{width:14px;height:14px;fill:var(--zap)}
+#app .route-link{font-weight:800;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+#app .crew-bar{border:2px solid #fff7e64d;border-radius:20px}
+#app .crew-choice{border:2px solid #fff7e640;border-radius:16px;transition:transform .1s}
+#app .crew-choice.active{border:3px solid var(--zap);background:#ffd23f26;transform:rotate(-1.5deg) scale(1.03)}
+#app .crew-choice:active{transform:scale(.96)}
+#app .crew-check{background:var(--zap);color:var(--ink);font-weight:900}
+
+/* ---- mini games --------------------------------------------------------- */
+#app .arcade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
+#app .arcade-card{--tone:var(--mint);position:relative;display:grid;grid-template-columns:112px minmax(0,1fr);align-items:stretch;min-height:150px;padding:0;text-align:left;font:inherit;color:var(--ink);background:var(--paper);border:var(--edge);border-radius:22px;box-shadow:var(--drop);overflow:hidden;cursor:pointer;transition:transform .08s,box-shadow .08s;-webkit-tap-highlight-color:transparent}
+#app .arcade-card:nth-child(odd){transform:rotate(-.5deg)}
+#app .arcade-card:nth-child(even){transform:rotate(.5deg)}
+#app .arcade-card:active{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--ink)}
+#app .arcade-card:focus-visible{outline:4px solid var(--grape);outline-offset:3px}
+#app .arcade-card:disabled{filter:saturate(.3);opacity:.7}
+#app .arcade-card[data-game=scout]{--tone:var(--mint)}
+#app .arcade-card[data-game=rally]{--tone:var(--sky)}
+#app .arcade-card[data-game=snack]{--tone:var(--pop)}
+#app .arcade-card[data-game=memory]{--tone:var(--grape)}
+#app .arcade-icon{position:relative;display:block;background:var(--tone);border-right:var(--edge);overflow:hidden}
+#app .arcade-body{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px 12px 46px 14px}
+#app .arcade-top{display:flex;gap:6px;align-items:center}
+#app .arcade-top em{display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 8px;border-radius:6px;background:var(--ink);color:var(--paper);font:900 11px/1 Inter,system-ui,sans-serif;letter-spacing:.05em;font-style:normal}
+#app .arcade-top em.new{background:var(--pop);color:#fff;animation:camp-wiggle 2.4s ease-in-out infinite}
+#app .arcade-top em.won{background:var(--zap);color:var(--ink)}
+#app .arcade-top em svg{width:12px;height:12px;fill:currentColor}
+#app .arcade-body strong{font:900 24px/1 var(--display);letter-spacing:-.01em;text-transform:uppercase}
+#app .arcade-how{display:flex;align-items:flex-start;gap:6px;font-size:13px;font-weight:700;line-height:1.3}
+#app .arcade-how svg{flex:none;width:15px;height:15px;margin-top:1px;fill:var(--ink)}
+#app .arcade-live{position:relative;display:block;min-height:32px;font-size:12px;font-weight:700;line-height:1.3;color:#3a514b}
+#app .arcade-live i{position:absolute;inset:0 0 auto;font-style:normal;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s}
+#app .arcade-live i.on{opacity:1;transform:none}
+#app .arcade-go{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:2px solid var(--ink);border-radius:999px;background:var(--tone);font:900 13px/1 Inter,system-ui,sans-serif;letter-spacing:.06em;box-shadow:2px 2px 0 var(--ink)}
+#app .arcade-go svg{width:14px;height:14px;fill:none;stroke:var(--ink);stroke-width:2.6;animation:camp-nudge 1.2s ease-in-out infinite}
+
+/* Trail Scout: a paw walks a dotted trail to a chest. */
+#app .a-path{position:absolute;width:11px;height:11px;border-radius:50%;background:#10231f55;animation:camp-step 2.4s linear infinite}
+#app .a-path:nth-child(1){left:16px;bottom:22px}
+#app .a-path:nth-child(2){left:36px;bottom:44px;animation-delay:.3s}
+#app .a-path:nth-child(3){left:58px;bottom:62px;animation-delay:.6s}
+#app .a-path:nth-child(4){left:74px;bottom:86px;animation-delay:.9s}
+#app .a-chest{position:absolute;right:12px;top:16px;width:30px;height:24px;border:3px solid var(--ink);border-radius:6px;background:var(--zap);animation:camp-pop 2.4s ease-in-out infinite}
+#app .a-chest::after{content:'';position:absolute;left:-3px;right:-3px;top:6px;height:3px;background:var(--ink)}
+#app .a-paw{position:absolute;left:10px;bottom:14px;width:30px;height:30px;fill:var(--ink);animation:camp-walk 2.4s ease-in-out infinite}
+/* RV Rally: lane dashes rush past a swaying RV. */
+#app .a-road{position:absolute;inset:0 30px;background:#10231f;transform:perspective(160px) rotateX(38deg) scale(1.5);transform-origin:50% 100%}
+#app .a-road::after{content:'';position:absolute;left:calc(50% - 3px);top:-40px;bottom:-40px;width:6px;background:repeating-linear-gradient(var(--zap) 0 18px,#0000 18px 36px);animation:camp-road .5s linear infinite}
+#app .a-rv{position:absolute;left:calc(50% - 21px);bottom:16px;width:42px;height:34px;border:3px solid var(--ink);border-radius:8px 8px 5px 5px;background:var(--paper);box-shadow:inset 0 -9px 0 var(--pop);animation:camp-sway 1.6s ease-in-out infinite}
+#app .a-rv::before{content:'';position:absolute;left:6px;right:6px;top:5px;height:9px;border-radius:3px;background:var(--ink)}
+#app .a-cone{position:absolute;right:26px;top:-16px;width:0;height:0;border:8px solid #0000;border-bottom:16px solid var(--pop);animation:camp-cone 1.6s linear infinite}
+/* Snack Storm: treats rain down beside a pulsing stack. */
+#app .a-drop{position:absolute;top:-30px;width:28px;height:28px;fill:var(--paper);stroke:var(--ink);stroke-width:1.5;animation:camp-fall 1.5s linear infinite}
+#app .a-drop:nth-child(1){left:10px}
+#app .a-drop:nth-child(2){left:42px;animation-delay:.5s;fill:var(--zap)}
+#app .a-drop:nth-child(3){left:72px;animation-delay:1s}
+#app .a-stack{position:absolute;left:50%;bottom:12px;padding:5px 9px;border:3px solid var(--ink);border-radius:10px;background:var(--zap);font:900 20px/1 var(--display);transform:translateX(-50%) rotate(-6deg);animation:camp-pulse .9s ease-in-out infinite}
+/* Camp Pairs: three cards take turns flipping. */
+#app .a-card{position:absolute;top:calc(50% - 26px);width:34px;height:48px;display:grid;place-items:center;border:3px solid var(--ink);border-radius:8px;background:var(--paper);font:900 20px/1 var(--display);font-style:normal;animation:camp-flip 2.7s ease-in-out infinite}
+#app .a-card:nth-child(1){left:6px;transform:rotate(-8deg)}
+#app .a-card:nth-child(2){left:38px;background:var(--zap);animation-delay:.9s}
+#app .a-card:nth-child(3){left:70px;background:var(--zap);transform:rotate(8deg);animation-delay:1.8s}
+
+/* ---- worlds and levels -------------------------------------------------- */
+#app .pill-button{border:2px solid var(--ink);background:var(--zap);color:var(--ink);font-weight:900;box-shadow:3px 3px 0 var(--ink)}
+#app .world-tab{border:2px solid var(--ink);border-radius:16px;background:var(--paper);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+#app .world-tab.active{background:var(--ink);color:var(--paper);box-shadow:3px 3px 0 var(--pop);transform:rotate(-1deg)}
+#app .world-tab.active>span:first-child{background:var(--zap);color:var(--ink)}
+#app .world-tab.locked{opacity:.55;box-shadow:none}
+#app .world-stage{border:var(--edge);border-radius:24px;background:var(--paper);box-shadow:var(--drop)}
+#app .world-stage-heading h3{font-size:28px;text-transform:uppercase;letter-spacing:-.01em;color:var(--ink)}
+#app .world-stage-heading>span{font-weight:800;color:var(--ink)}
+#app .level-card{position:relative;border:2px solid var(--ink);border-radius:16px;background:#fff;color:var(--ink);box-shadow:3px 3px 0 var(--ink);padding-bottom:40px;transition:transform .08s,box-shadow .08s}
+#app .level-card:not(:disabled):active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+#app .level-card>b{background:var(--mint);color:var(--ink);border:2px solid var(--ink);font-weight:900}
+#app .level-card.complete>b{background:var(--zap)}
+#app .level-card .medals svg.earned{fill:var(--pop)}
+#app .level-card:disabled{background:#efe7d3;box-shadow:none;border-style:dashed;opacity:.75}
+#app .level-go{position:absolute;left:10px;right:10px;bottom:9px;display:block;padding:6px 4px;border-radius:999px;background:var(--ink);color:var(--zap);font:900 11px/1.1 Inter,system-ui,sans-serif;font-style:normal;letter-spacing:.06em;text-align:center}
+#app .level-card:disabled .level-go{background:#0000;color:#5a6b66}
+#app .checkpoint-mark{background:var(--pop);color:#fff;font-weight:900}
+#app .world-stage-footer button{font-weight:900;color:var(--ink)}
+
+/* ---- daily, quests, menu -------------------------------------------------- */
+#app .daily-card{border:var(--edge);border-radius:24px;background:var(--grape);color:#fff;box-shadow:var(--drop)}
+#app .daily-card .eyebrow{background:var(--zap);color:var(--ink)}
+#app .daily-card h3{color:#fff;font-size:26px;text-transform:uppercase;line-height:1.05}
+#app .daily-card p{color:#f1ecff}
+#app .daily-card .secondary{border:2px solid var(--ink);background:var(--zap);color:var(--ink);font-weight:900;box-shadow:3px 3px 0 var(--ink)}
+#app .quest-preview{border:var(--edge);border-radius:24px;background:var(--paper);box-shadow:var(--drop)}
+#app .quest-preview h3{text-transform:uppercase;font-size:22px;line-height:1.05;color:var(--ink)}
+#app .quest-preview>button{border:2px solid var(--ink);border-radius:50%;background:var(--mint);box-shadow:2px 2px 0 var(--ink)}
+#app .mobile-nav button{border:2px solid var(--ink);border-radius:14px;background:var(--paper);color:var(--ink);font-weight:900;box-shadow:3px 3px 0 var(--ink)}
+#app .mobile-nav button:nth-child(1){background:var(--zap)}
+#app .mobile-nav button:nth-child(2){background:var(--mint)}
+#app .mobile-nav button:nth-child(3){background:#ffb3a4}
+#app .mobile-nav button:active,#app .pill-button:active,#app .world-tab:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+#app .topbar .icon-button{border:2px solid var(--ink);box-shadow:2px 2px 0 var(--ink)}
+
+/* ---- phones --------------------------------------------------------------- */
+@media (max-width:760px){
+ #app .arcade{grid-template-columns:1fr;gap:16px}
+ #app .arcade-card{grid-template-columns:104px minmax(0,1fr);min-height:146px}
+}
+@media (max-width:359px){
+ #app .arcade-card{grid-template-columns:84px minmax(0,1fr)}
+ #app .arcade-body strong{font-size:21px}
+ #app .a-card:nth-child(3),#app .a-drop:nth-child(3){display:none}
+}
+
+/* ---- motion --------------------------------------------------------------- */
+@keyframes camp-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+@keyframes camp-wiggle{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(-7deg)}95%{transform:rotate(7deg)}}
+@keyframes camp-step{0%,100%{background:#10231f55;transform:scale(1)}12%{background:var(--paper);transform:scale(1.5)}30%{background:#10231f55;transform:scale(1)}}
+@keyframes camp-walk{0%{transform:translate(0,0) rotate(20deg)}70%,100%{transform:translate(56px,-66px) rotate(20deg)}}
+@keyframes camp-pop{0%,62%,100%{transform:scale(1) rotate(0)}74%{transform:scale(1.3) rotate(-8deg)}86%{transform:scale(1.1) rotate(6deg)}}
+@keyframes camp-road{to{transform:translateY(36px)}}
+@keyframes camp-sway{0%,100%{transform:translateX(-12px) rotate(-4deg)}50%{transform:translateX(12px) rotate(4deg)}}
+@keyframes camp-cone{0%{transform:translateY(0) scale(.5)}100%{transform:translateY(190px) scale(1.5)}}
+@keyframes camp-fall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(200px) rotate(200deg)}}
+@keyframes camp-pulse{0%,100%{transform:translateX(-50%) rotate(-6deg) scale(1)}50%{transform:translateX(-50%) rotate(-6deg) scale(1.14)}}
+@keyframes camp-flip{0%,22%,100%{transform:rotateY(0)}11%{transform:rotateY(180deg)}}
+html[data-reduced-motion=true] #app .camp-extras *,html[data-reduced-motion=true] #app .home-screen *{animation:none!important;transition:none!important}
+html[data-reduced-motion=true] #app .a-drop{top:26px}
+html[data-reduced-motion=true] #app .a-cone{top:30px}
+html[data-reduced-motion=true] #app .arcade-live i{transform:none}
+@media (prefers-reduced-motion:reduce){#app .camp-extras *,#app .home-screen *{animation:none!important}#app .a-drop{top:26px}#app .a-cone{top:30px}}

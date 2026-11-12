@@ -1,4 +1,4 @@
-import { WORLDS, LEVELS } from './world-levels.js?v=21';
+import { WORLDS, LEVELS } from './world-levels.js?v=22';
 export { WORLDS, LEVELS };
 
 export const SAVE_KEY='doodle-onward-journey-v1';
