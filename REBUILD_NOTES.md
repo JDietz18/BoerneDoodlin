@@ -170,6 +170,7 @@ What was checked for v21, in Chromium with an iPhone profile:
 - A phone with release 20 installed meeting release 21 on the same address: the save carried over, no old module was mixed in, the old cache was removed, and every activity reopened offline.
 - The portable build inside a host page that wraps it the way a preview does.
 - Platform drawing at about 4 ms a frame with the processor slowed four times.
+- Independent reviews of the platform adventure, RV Rally, Snack Storm, the gestures, and the saves, each on a frozen copy. What they confirmed was fixed and given a test that fails without the fix: a stomped boss that leapt back into the buddy, bandits that reached through step platforms, trail markers that returned the buddy into a bandit's lane, a Snack Storm course that depended on frame pacing, and a Rally scene that lost sharpness for good at 30 frames a second.
 
 What has not been checked, and should be before a trip depends on it:
 

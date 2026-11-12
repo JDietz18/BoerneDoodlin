@@ -63,8 +63,13 @@ not loaded by the page.
 - **Touch only on phones.** No visible pads or buttons. New actions get a
   gesture in `controls.js`; real buttons stay available to keyboard and
   assistive tech inside `.assist-controls` (hidden until focused).
-- **Motion.** Everything honours Reduced motion; text on a phone is 11 px or
-  larger; nothing important sits under the HUD band (`view.insets`).
+- **Motion.** Everything honours Reduced motion (no shake, bursts, flashes,
+  or flying pieces); text on a phone is 11 px or larger; nothing important
+  sits under the HUD band (`view.insets`). Each view sets `juice.ceiling`
+  every frame, in its own drawing space, so labels stay below that band.
+- **Fair hazards.** Nothing may hurt the buddy through a platform, a dazed
+  boss cannot hurt, and a respawn never lands inside a bandit's reach.
+  `tests/platform-extras.test.mjs` holds each of these against the worst case.
 - **iPhone canvas.** No `shadowBlur` in loops (use cached glow sprites), no
   per-frame gradients or allocations per entity, device pixel ratio capped at 2.
 - **Art and words.** Griffin comes only from `griffin-character-atlas.png`;
