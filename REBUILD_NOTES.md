@@ -175,6 +175,7 @@ What was checked for v21, in Chromium with an iPhone profile:
 What has not been checked, and should be before a trip depends on it:
 
 - A real iPhone in Safari and as a Home Screen app. Chromium is not WebKit: touch timing, safe areas, audio unlock, the wake lock, and WebGL in RV Rally all deserve a few minutes on the actual phones.
+- RV Rally's quicker way of showing its 3D scene (straight to the screen instead of copied onto the page's canvas). It has only ever run on a software renderer, so it is off by default and the game draws the road the way release 13 did. "Faster road drawing" in the guide turns it on for one phone; if the road looks right there, it is safe to leave on.
 - Sound by ear. The cue list is tested; nobody has listened to it.
 - Touch feedback. iPhone has no vibration interface for web pages; the fallback used here is unproven on a device and simply does nothing where it is unsupported.
 - Tilt steering, battery use, and heat over a long session.
