@@ -2,9 +2,9 @@
 
 Read CLAUDE_HANDOFF.md, then README.md, GRIFFIN_REFERENCE.md, and REBUILD_NOTES.md.
 
-This package is the shipped Site version 13 source. The intended GitHub repository
-is JDietz18/BoerneDoodlin. ChatGPT could not access that repository; compare its
-actual contents before integrating this package.
+This repository began as the shipped Site version 13 source and now holds the
+touch-first release built on it (asset version v21). CLAUDE.md has the current
+module map and the rules that must hold.
 
 From this directory:
 
@@ -14,7 +14,8 @@ python3 -m http.server 8000 --directory dist
 ```
 
 Open http://localhost:8000/. There is no dependency installation or build step.
-The baseline is 130 passing tests. The recorded prior run is in VERIFICATION.txt.
+The suite runs in a few seconds and must stay green. Continuous integration
+runs it on every push.
 
 Use a feature branch or isolated worktree, preserve existing work and player
 saves, and verify all five activities. The full handoff covers artwork, engine

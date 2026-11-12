@@ -11,12 +11,12 @@ On a phone a run takes the whole screen, in either orientation, and **the play f
 | Activity | Touch | Keyboard |
 | --- | --- | --- |
 | Platform adventure | Slide your left thumb to run. Tap the right side to jump; hold for height, tap again in the air. Flick up for your power. Pull down to drop fast. Chests open and signs speak when you reach them. | Left/Right or A/D, Space/Up/W to jump, Down/S to drop, X for power, E to open |
-| Trail Scout | Swipe to step and keep dragging to keep walking, or tap a tile to go there. Hold still for a hint. Two fingers use your power. | Arrows or WASD, E to interact, H for a hint, X for power |
+| Trail Scout | Swipe to step and keep dragging to keep walking, or tap a tile (or the corner map) to go there. Press and hold for a hint. Two fingers use your power. | Arrows or WASD, E to interact, H for a hint, X for power |
 | RV Rally | Drag anywhere to steer. Pull back, or rest a second finger, to brake. Flick up to boost. Tilt steering is an option in the guide. | Left/Right or A/D, Down/S to brake, X to boost |
 | Snack Storm | Drag to catch. Flick up for your power. | Left/Right or A/D, X for power |
 | Camp Pairs | Tap the cards. | Tab to a card, Enter or Space |
 
-The glowing power layer at the top of the screen can always be tapped as well. P or Escape pauses on a keyboard; the pause button is in the top corner. Real buttons for every action stay available to keyboard, switch, and screen reader users and appear only when focused.
+The glowing power layer at the top of the screen can always be tapped as well, even with a thumb already on the field. P or Escape pauses on a keyboard; the pause button is in the top corner. Real buttons for every action stay available to keyboard, switch, and screen reader users and appear only when focused.
 
 ## Five chapters, at your pace
 

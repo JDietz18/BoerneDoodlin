@@ -1,5 +1,13 @@
 # Doodle Onward: Claude Code handoff
 
+> **Where things stand now.** This document describes the Site version 13
+> baseline that was handed over (asset version v20). The repository has moved
+> on to the touch-first release, v21: gesture controls with no on-screen
+> buttons, a rebuilt platform view, livelier mini-games, and a new HUD. The
+> contracts in section 7 still hold. For the current module map and rules read
+> `CLAUDE.md`; for controls, the offline bundle, and what has and has not been
+> verified read `REBUILD_NOTES.md`.
+
 Prepared November 11, 2026, Pacific time. This document describes the finished release handed over from ChatGPT, not an inspected copy of the intended GitHub repository.
 
 ## 1. Your assignment

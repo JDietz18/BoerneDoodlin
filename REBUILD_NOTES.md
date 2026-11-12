@@ -107,19 +107,27 @@ Daily bonuses are once per local calendar date. Every activity is eligible for t
 
 ## Controls and accessibility
 
-Platform: Left/Right or A/D moves freely; Space/Up/W jumps, holding controls height, and a second press double-jumps. Down/S fast-drops. E/Enter interacts with chests, signs, and the RV goal.
+On a phone the play field is the controller and nothing is drawn over it. `dist/controls.js` tracks each finger on its own and reports intent; `dist/game.js` turns that into engine calls.
 
-Trail Scout: arrows or WASD move in four directions, E/Enter interacts, H provides a hint, and X uses charged power. RV Rally: Left/Right or A/D steers, Down/S brakes, X uses charged power. Snack Storm: arrows or A/D, touch dragging, or arrow buttons move the character; X uses power. Camp Pairs uses native card buttons, keyboard navigation, and limited Peek hints. P/Escape pauses action play.
+| Activity | Touch | Keyboard |
+| --- | --- | --- |
+| Platform | Left half: slide to run, flick up for power, pull down to drop. Right half: tap to jump, hold for height, tap again in the air. Chests open and signs speak on arrival. | Left/Right or A/D, Space/Up/W, Down/S, X, E/Enter |
+| Trail Scout | Swipe or drag to walk, tap a tile (or the corner map) to go there, press and hold for a hint, two fingers for power. Walking into a chest, the neighbor, or the RV uses it. | Arrows or WASD, E/Enter, H, X |
+| RV Rally | Drag to steer, pull back or rest a second finger to brake, flick up to boost. Tilt steering is opt in. | Left/Right or A/D, Down/S, X |
+| Snack Storm | Drag to catch, flick up or a second finger for power. | Left/Right or A/D, X |
+| Camp Pairs | Tap the cards. | Tab, Enter or Space |
 
-Sound is opt-in. Assist and reduced-motion preferences persist. Daily challenges use neutral gear, no charms, and no assist; normal play retains the selected profile.
+The glowing power layer in the stack meter, Trail Scout's hint chip, and pause act when a finger lands, so they work while a thumb is already on the field. Real buttons for every action live in `.assist-controls` for keyboard, switch, and screen reader users and stay out of sight until focused. P/Escape pauses.
 
-The score stack is the product of chain (up to 5×), frenzy (2×), Gold Rush (2×), and Griffin's power (1.5×), up to 30×. Records keep fractional multipliers such as 7.5×.
+Sound is opt-in. Assist and reduced-motion preferences persist in the journey. Touch feedback, tilt steering, and which first-time hints have been seen are device preferences in `doodle-onward-device-v1`. Daily challenges use neutral gear, no charms, and no assist; normal play retains the selected profile.
 
-## Offline release v20
+The score stack is the product of chain (up to 5×), frenzy (2×), Gold Rush (2×), and Griffin's power (1.5×), up to 30×. Records keep fractional multipliers such as 7.5×. The meter shows all four layers at all times; the frenzy bar rests while a frenzy is cooling down.
 
-The app remains on its existing URL and keeps manifest ID `/`, scope `/`, and start URL `/?source=homescreen`. Its display name is Doodle Onward. The approved Griffin icon and all four character atlases use `?v=20`.
+## Offline release v21
 
-The worker cache is `doodle-onward-journey-v20`. The release bundle includes fourteen active JavaScript modules, both stylesheets, the manifest, approved character art, shared scenery, icon, and font. Module queries and image request queries must match the precache exactly.
+The app remains on its existing URL and keeps manifest ID `/`, scope `/`, and start URL `/?source=homescreen`. Its display name is Doodle Onward. The approved Griffin icon and all four character atlases use `?v=21`.
+
+The worker cache is `doodle-onward-journey-v21`. The release bundle includes twenty active JavaScript modules, three stylesheets, the manifest, approved character art, shared scenery, icon, and font. Module queries and image request queries must match the precache exactly, and the install step asks the network for fresh copies so a phone never mixes an old module with a new page. `tests/release.test.mjs` fails if any file carries a different version.
 
 Navigation uses the network when available and falls back to the cached entry offline. Listed same-origin assets use the release cache. Arbitrary, non-GET, and cross-origin requests are not intercepted. Activation removes only obsolete `doodle-onward-`, `boerne-doodlin-`, and `griffin-snack-patrol-` caches.
 
