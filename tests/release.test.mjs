@@ -51,6 +51,10 @@ test('the stack meter describes each layer and never invents a multiplier', () =
   const kevin = stackLayers({ multiplier: 5, combo: 40, feverTime: 4, goldRushTime: 6, powerTime: 2, totalMultiplier: 20 }, 'kevin');
   assert.equal(kevin.power.value, 1); assert.equal(kevin.power.counts, false); assert.equal(kevin.total, 20);
   assert.equal(stackLayers({ multiplier: 3, totalMultiplier: 7.5 }).total, 7.5, 'fractional stacks are kept');
+  // The frenzy bar tells the truth: it rests while a frenzy is cooling down, and RV Rally needs a 20 chain.
+  const cooling = stackLayers({ multiplier: 4, combo: 30, _feverCooldown: 9 });
+  assert.equal(cooling.frenzy.on, false); assert.equal(cooling.frenzy.cooling, true); assert.equal(cooling.frenzy.fill, 0);
+  assert.equal(stackLayers({ runMode: 'rally', multiplier: 2, combo: 10 }).frenzy.fill, .5); assert.equal(stackLayers({ runMode: 'rally', feverTime: 3.5 }).frenzy.fill, .5);
   assert.deepEqual(STACK_TIERS, [2, 5, 10, 20, 30]);
   assert.deepEqual([1, 2, 4.5, 5, 9, 10, 19.9, 20, 29, 30].map(tierOf), [0, 2, 2, 5, 5, 10, 10, 20, 20, 30]);
 });
@@ -132,10 +136,13 @@ test('the play field is the controller: thumbs are tracked alone and every gestu
   field.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 336 }); assert.deepEqual(controls.dir, { x: 1, y: 0 }, 'turning mid-drag changes direction');
   field.fire('pointerup', { pointerId: 1 }); assert.deepEqual(controls.dir, { x: 0, y: 0 }); assert.ok(!names().includes('tap'), 'a drag is not also a tap');
   field.fire('pointerdown', { pointerId: 2, clientX: 90, clientY: 120 }); field.fire('pointerup', { pointerId: 2, clientX: 91, clientY: 120 }); assert.deepEqual(calls.at(-1), ['tap', 90, 120]);
-  calls.length = 0; field.fire('pointerdown', { pointerId: 3, clientX: 90, clientY: 120 }); clock += 300; controls.update(.3); assert.deepEqual(calls, []); clock += 300; controls.update(.3); controls.update(.3);
+  calls.length = 0; field.fire('pointerdown', { pointerId: 3, clientX: 90, clientY: 120 }); clock += 500; controls.update(.5); assert.deepEqual(calls, [], 'a resting thumb does not spend a hint'); clock += 500; controls.update(.5); controls.update(.5);
   assert.deepEqual(names(), ['hint'], 'holding still asks for one hint'); field.fire('pointerup', { pointerId: 3 }); assert.deepEqual(names(), ['hint'], 'and the release is not a tap');
   calls.length = 0; field.fire('pointerdown', { pointerId: 4, clientX: 90, clientY: 120 }); field.fire('pointerdown', { pointerId: 5, clientX: 190, clientY: 120 }); field.fire('pointerup', { pointerId: 4 }); field.fire('pointerup', { pointerId: 5 });
   assert.deepEqual(names().filter(name => name !== 'dir'), ['power']);
+  // After a two-finger power the walking finger carries on without lifting, and its release is not a tap.
+  calls.length = 0; field.fire('pointerdown', { pointerId: 6, clientX: 100, clientY: 300 }); field.fire('pointerdown', { pointerId: 7, clientX: 220, clientY: 300 }); field.fire('pointerup', { pointerId: 7 });
+  field.fire('pointermove', { pointerId: 6, clientX: 140, clientY: 302 }); assert.deepEqual(controls.dir, { x: 1, y: 0 }); field.fire('pointerup', { pointerId: 6 }); assert.ok(!names().includes('tap'));
 
   // RV Rally: drag steers, pulling back brakes, a second finger brakes, a flick boosts.
   controls.configure('rally'); controls.active = true; calls.length = 0; clock = 9000;
@@ -144,7 +151,18 @@ test('the play field is the controller: thumbs are tracked alone and every gestu
   road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 460 }); assert.equal(controls.braking, true); road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 405 }); assert.equal(controls.braking, false);
   road.fire('pointerdown', { pointerId: 2, clientX: 60, clientY: 500 }); assert.equal(controls.braking, true); road.fire('pointerup', { pointerId: 2 }); assert.equal(controls.braking, false);
   clock = 9500; road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 405 }); clock = 9560; road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 340 }); assert.ok(names().includes('power'));
+  // The same thumb can boost again a moment later without lifting, and a slow downward drift is not a brake.
+  clock = 10200; road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 405 }); clock = 10600; road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 403 }); clock = 10660; road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 343 });
+  assert.equal(names().filter(name => name === 'power').length, 2, 'a held thumb can flick again');
+  road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 400 }); assert.equal(controls.braking, false, 'coming back down from a flick is not a brake');
+  for (let i = 1; i <= 40; i++) { clock += 100; road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 400 + i * 2 }); controls.update(.1); }
+  assert.equal(controls.braking, false, 'a thumb that wanders down slowly keeps driving');
+  road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 540 }); assert.equal(controls.braking, true, 'a deliberate pull still brakes');
+  // If the steering thumb lifts while a second finger rests, the next touch steers again.
   road.fire('pointerup', { pointerId: 1 }); assert.equal(controls.steering, null); assert.equal(controls.drag, null);
+  road.fire('pointerdown', { pointerId: 2, clientX: 300, clientY: 500 }); road.fire('pointerdown', { pointerId: 3, clientX: 80, clientY: 500 }); road.fire('pointerup', { pointerId: 2 });
+  assert.equal(controls.braking, true); road.fire('pointerdown', { pointerId: 4, clientX: 200, clientY: 420 }); road.fire('pointermove', { pointerId: 4, clientX: 240, clientY: 420 });
+  assert.equal(controls.steering, .5, 'a new finger takes the wheel'); road.fire('pointerup', { pointerId: 3 }); road.fire('pointerup', { pointerId: 4 }); assert.equal(controls.braking, false);
 
   // Snack Storm: the buddy follows the finger; a flick is the power.
   controls.configure('snack'); controls.active = true; calls.length = 0;

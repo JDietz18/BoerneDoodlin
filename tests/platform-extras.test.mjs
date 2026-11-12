@@ -188,3 +188,20 @@ test('a remix reshuffles climbs, raised sections, and bandits while every goal s
     }
   }
 });
+
+test('a jump tapped and let go just before landing is a short hop; one still held is a full leap',()=>{
+  const flight=release=>{
+    const run=new PlatformRun();run.reset({levelId:'river-1'});run.entities=[];
+    run.platforms=[{id:'floor',x:0,y:480,w:1200,h:120,type:'ground',oneWay:false,active:true}];run.width=1200;
+    Object.assign(run.player,{x:300,y:455,vy:260,grounded:false,jumps:2});run._groundId=null;run._coyote=0;
+    assert.equal(run.jump(),false,'no jumps left in the air, so the tap is remembered');
+    if(release)run.releaseJump();
+    let top=480,jumped=false;
+    for(let i=0;i<240;i++){run.update(1/120);if(!run.player.grounded&&run.player.vy<0)jumped=true;top=Math.min(top,run.player.y);}
+    assert.ok(jumped,'the remembered tap still jumps on landing');assert.equal(run.player.grounded,true);
+    return 480-top;
+  };
+  const hop=flight(true),leap=flight(false);
+  assert.ok(hop>40&&hop<leap*.7,`a released tap hops ${hop.toFixed(0)}px, a held one leaps ${leap.toFixed(0)}px`);
+  assert.ok(leap>95);
+});

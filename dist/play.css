@@ -12,8 +12,8 @@ body.playing #arena{touch-action:none}
 
 /* ---- heads-up display ------------------------------------------------ */
 #app .hud{position:absolute;inset:0;z-index:4;pointer-events:none;color:var(--hud-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
-#app .hud::before{content:'';position:absolute;inset:0 0 auto;height:150px;background:linear-gradient(#0e2f2ecc,#0e2f2e66 55%,#0e2f2e00);pointer-events:none}
-#app .hud-progress{position:absolute;inset:0 0 auto;height:4px;background:#0000002e}
+#app .hud::before{content:'';position:absolute;inset:0 0 auto;height:calc(var(--hud-h,118px) + 36px);background:linear-gradient(#0e2f2ecc,#0e2f2e66 55%,#0e2f2e00);pointer-events:none}
+#app .hud-progress{position:absolute;inset:var(--safe-t) 0 auto;height:4px;background:#0000002e}
 #app .hud-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9fe3d4,#f6cc70);border-radius:0 3px 3px 0;transition:width .25s linear}
 #app .hud-top{position:absolute;top:calc(10px + var(--safe-t));left:calc(12px + var(--safe-l));right:calc(12px + var(--safe-r));display:grid;grid-template:"pause id id timer score" auto "obj obj stack stack stack" auto / auto auto minmax(0,1fr) auto auto;align-items:center;gap:6px 10px}
 #app .hud-pause{grid-area:pause;pointer-events:auto;flex:none;width:46px;height:46px;border-radius:50%;border:1.5px solid var(--hud-line);background:var(--hud-glass);color:var(--hud-ink);display:grid;place-items:center;padding:0;touch-action:manipulation}
@@ -38,7 +38,7 @@ body.playing #arena{touch-action:none}
 #app #score.bump{animation:hud-pop .3s cubic-bezier(.2,1.6,.4,1)}
 
 /* ---- bonus stack meter ------------------------------------------------- */
-#app .stack{grid-area:stack;justify-self:end;display:flex;align-items:center;gap:6px;--tier-color:#fff4db}
+#app .stack{grid-area:stack;justify-self:end;display:flex;align-items:center;gap:6px;--tier-color:#fff4db;pointer-events:auto}
 #app .stack[hidden]{display:none}
 #app .stack[data-tier="2"]{--tier-color:#fff0a8}
 #app .stack[data-tier="5"]{--tier-color:#ffd75e}
@@ -50,8 +50,8 @@ body.playing #arena{touch-action:none}
 #app .stack[data-tier="0"] .stack-total{opacity:.55;font-size:18px}
 #app .stack[data-tier="30"] .stack-total{animation:hud-rainbow 1s linear infinite}
 #app .stack-layers{display:flex;gap:3px}
-#app .layer{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:48px;height:34px;border-radius:8px;background:#123c38b0;border:1px solid var(--hud-line);opacity:.62;transition:opacity .2s,background .2s,border-color .2s}
-#app .layer em{font:800 9px/1 Inter,system-ui,sans-serif;font-style:normal;letter-spacing:.04em}
+#app .layer{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:60px;height:36px;border-radius:9px;background:#123c38b0;border:1px solid var(--hud-line);opacity:.62;transition:opacity .2s,background .2s,border-color .2s}
+#app .layer em{font:800 11px/1 Inter,system-ui,sans-serif;font-style:normal;letter-spacing:.01em;white-space:nowrap}
 #app .layer b{font-size:12px;line-height:1;font-weight:900}
 #app .layer i{position:absolute;left:0;bottom:0;height:4px;width:calc(var(--fill,0)*100%);background:#fff4db8c;border-radius:0 3px 0 0}
 #app .layer.on{opacity:1;border-color:#fff4dbb3}
@@ -62,9 +62,10 @@ body.playing #arena{touch-action:none}
 #app .layer.power.on{background:#3f77a8f2}
 #app .layer.bump{animation:hud-pop .4s cubic-bezier(.2,1.8,.4,1)}
 #app .layer.low{animation:hud-blink .45s steps(2) infinite}
+#app .layer.cooling{opacity:.4}
 #app button.layer{pointer-events:auto;color:inherit;font:inherit;padding:0;margin:0;touch-action:manipulation;cursor:pointer}
 #app .layer.power.ready{opacity:1;border-color:#fff4db;background:#2f7f6ef2;animation:hud-ready 1s ease-in-out infinite}
-#app button.obj{pointer-events:auto;color:inherit;font-family:inherit;touch-action:manipulation;cursor:pointer;min-height:30px;padding:0 10px}
+#app button.obj{pointer-events:auto;color:inherit;font-family:inherit;touch-action:manipulation;cursor:pointer;min-height:34px;padding:0 12px;border-radius:17px}
 #app button.obj.spent{opacity:.5}
 
 /* ---- timer, callout, tip ------------------------------------------------- */
@@ -88,7 +89,7 @@ body.playing #arena{touch-action:none}
 #app .assist-controls[hidden]{display:none}
 #app .assist-controls button{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 #app .assist-controls button:focus-visible{position:static;width:auto;height:auto;margin:0;clip:auto;overflow:visible;padding:10px 14px;border-radius:12px;border:2px solid #fff4db;background:#123c38;color:#fff4db;font:700 13px Inter,system-ui,sans-serif}
-#app .safe-probe{position:absolute;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none}
+#app .safe-probe{position:absolute;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px);box-sizing:content-box;visibility:hidden;pointer-events:none}
 /* First-time coach marks: a short, fading hint about where to touch. */
 #app .coach{position:absolute;left:0;right:0;bottom:calc(18% + var(--safe-b));display:flex;justify-content:space-around;align-items:flex-end;gap:10px;padding:0 calc(14px + var(--safe-r)) 0 calc(14px + var(--safe-l));pointer-events:none;transition:opacity .5s}
 #app .coach[hidden]{display:none}
@@ -111,15 +112,26 @@ body.playing #arena{touch-action:none}
  #app .overlay{overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l))}
 }
 @media (max-width:400px){
- #app .layer{width:44px}
  #app #score{font-size:26px}
 }
+/* Upright phones: goals and the stack each get a row, so every layer is wide
+   enough to read and to tap. */
+@media (max-width:560px){
+ #app .hud-top{grid-template:"pause id id timer score" auto "obj obj obj obj obj" auto "stack stack stack stack stack" auto / auto auto minmax(0,1fr) auto auto}
+ #app .stack{justify-self:stretch}
+ #app .stack-layers{flex:1;gap:4px}
+ #app .layer{flex:1 1 0;width:auto;height:38px}
+ #app .stack-total{min-width:50px}
+}
 @media (max-height:560px) and (orientation:landscape){
- #app .hud::before{height:96px}
  #app .hud-top{top:calc(6px + var(--safe-t))}
+ #app .result-card{max-width:560px}
+}
+/* A wide phone on its side fits everything on one line; a narrower one keeps two rows. */
+@media (max-height:560px) and (orientation:landscape) and (min-width:761px){
  #app .hud-top{grid-template:"pause id obj stack timer score" auto / auto auto minmax(0,1fr) auto auto auto}
  #app .hud-objectives{justify-content:flex-start}
- #app .result-card{max-width:560px}
+ #app .layer{width:56px}
 }
 
 /* ---- result card polish ----------------------------------------------------- */
@@ -165,9 +177,12 @@ body.playing #arena{touch-action:none}
  #app .result-card .button-pair{margin-top:8px}
 }
 
-/* Trail Scout shows three goals, so its stack meter takes a row of its own on narrow screens. */
-@media (max-width:560px){
- #app[data-activity=scout] .hud-top{grid-template:"pause id id timer score" auto "obj obj obj obj obj" auto "stack stack stack stack stack" auto / auto auto minmax(0,1fr) auto auto}
+/* Trail Scout keeps its corner map clear: messages rise from the bottom instead. */
+#app[data-activity=scout] .hud-callout{top:auto;bottom:calc(60px + var(--safe-b));transform:translate(-50%,6px)}
+#app[data-activity=scout] .hud-callout.visible{transform:translate(-50%,0)}
+/* On its side there is little height to spare, so they run wide and low. */
+@media (max-height:560px) and (orientation:landscape){
+ #app[data-activity=scout] .hud-callout{bottom:calc(50px + var(--safe-b));max-width:min(84%,600px);font-size:14px;padding:7px 14px}
 }
 
 /* ---- backup by text --------------------------------------------------------------- */
@@ -177,6 +192,9 @@ body.playing #arena{touch-action:none}
 
 /* ---- camp screen on a phone: readable in a moving car, easy to tap ----------------- */
 @media (max-width:760px){
+ #app .level-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
  #app .wordmark small{font-size:8px;letter-spacing:1.6px}
  #app .top-actions .icon-button{width:44px;height:44px;min-width:44px}
  #app .top-actions .icon-button svg{width:20px;height:20px}
@@ -195,7 +213,6 @@ body.playing #arena{touch-action:none}
  #app .world-tab small{font-size:11px}
  #app .world-stage-heading p{font-size:13px}
  #app .world-stage-heading span{font-size:11px}
- #app .level-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  #app .level-card strong{font-size:13px}
  #app .level-card small{font-size:11px;letter-spacing:.02em}
  #app .world-stage-footer span{font-size:12px;line-height:1.45}
@@ -217,7 +234,7 @@ body.playing #arena{touch-action:none}
  .panel-dialog .setting small{font-size:12px;line-height:1.4}
  .panel-dialog .icon-button{width:44px;height:44px;min-width:44px}
 }
-@media (max-width:760px){
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
  #app .quest-preview button{min-width:44px;min-height:44px}
  #app .activity-copy small{font-size:11px}
 }

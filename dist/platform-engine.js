@@ -22,7 +22,7 @@ export class PlatformRun {
     this.runId=`platform-${Date.now().toString(36)}-${this._instance}-${++this._runs}`;
     this.width=this.level.width;this.height=this.level.height;this.platforms=this.level.platforms;this.entities=this.level.entities;this.zones=this.level.zones;
     this.player={x:this.level.spawn.x,y:this.level.spawn.y,vx:0,vy:0,w:W,h:H,width:W,height:H,grounded:true,jumps:0,facing:1,moving:0,jumpHeld:false,sliding:false,drop:false};
-    this._groundId=this.platforms[0].id;this._move=0;this._coyote=.12;this._jumpBuffer=0;this._springCooldown=0;this._promptId=null;this._goalMessageAt=-10;
+    this._groundId=this.platforms[0].id;this._move=0;this._coyote=.12;this._jumpBuffer=0;this._tapBuffered=false;this._hopCut=0;this._springCooldown=0;this._promptId=null;this._goalMessageAt=-10;
     this.time=0;this.distance=0;this.farthest=this.player.x;this.speed=275*(1+this.charms.speed)*(this.assist?.92:1);this.goal=this.width-175;
     this.score=0;this.treats=0;this.gold=0;this.keys=0;this.requiredKeys=this.level.requiredKeys;this.letters=0;this.letterMask=0;
     this.maxHearts=3+(this.characterId==='spike'?1:0)+this.gear.heart+(this.assist?1:0);this.hearts=this.maxHearts;
@@ -44,10 +44,11 @@ export class PlatformRun {
     if(this.mode!=='running')return false;const p=this.player;
     if(p.grounded||this._coyote>0){p.jumps=1;return this._launch(false);}
     if(p.jumps<2+(this.charms.extraJump?1:0)){p.jumps++;this.doubleJumps++;return this._launch(true);}
-    this._jumpBuffer=.14;return false;
+    this._jumpBuffer=.14;this._tapBuffered=false;return false;
   }
-  _launch(double){const p=this.player;p.vy=-(double?565:610)*(this.characterId==='mittens'?1.06:1);p.grounded=false;p.jumpHeld=true;p.drop=false;this._groundId=null;this._coyote=0;this._jumpBuffer=0;this.emit(double?'double-jump':'jump',{x:p.x,y:p.y});return true;}
-  releaseJump(){const p=this.player;if(p.jumpHeld&&p.vy<-220)p.vy=Math.max(-260,p.vy*.47);p.jumpHeld=false;}
+  _launch(double){const p=this.player;p.vy=-(double?565:610)*(this.characterId==='mittens'?1.06:1);p.grounded=false;p.jumpHeld=true;p.drop=false;this._groundId=null;this._coyote=0;this._jumpBuffer=0;this._hopCut=0;this.emit(double?'double-jump':'jump',{x:p.x,y:p.y});return true;}
+  // A tap that was let go before the buddy landed still becomes a short hop, not a full leap.
+  releaseJump(){const p=this.player;if(this._jumpBuffer>0)this._tapBuffered=true;if(p.jumpHeld&&p.vy<-220)p.vy=Math.max(-260,p.vy*.47);p.jumpHeld=false;}
   drop(){if(this.mode!=='running'||this.player.grounded)return false;this.player.vy=Math.max(850,this.player.vy);this.player.drop=true;this.emit('slide',{airborne:true});return true;}
   slide(){return this.drop();}
   pause(){if(this.mode!=='running')return;this.mode='paused';this._move=0;this.player.jumpHeld=false;this.emit('pause');}
@@ -82,6 +83,7 @@ export class PlatformRun {
     this.time+=dt;
     for(const key of ['invincible','powerTime','magnetTime','feverTime','goldRushTime','_feverCooldown','comboTime','_jumpBuffer','_springCooldown','_ventCooldown'])this[key]=Math.max(0,this[key]-dt);
     if(!this.comboTime&&this.combo){this.combo=0;this.multiplier=1;}
+    if(this._hopCut>0){this._hopCut-=dt;if(this._hopCut<=0){this._hopCut=0;this.releaseJump();}}
     this._gainCharge(dt*1.4);if(this.mode!=='running')return;
     this._stepPlatforms(dt);const p=this.player,oldX=p.x,wasGrounded=p.grounded;let oldFeet=p.y;
     const support=this.platforms.find(s=>s.id===this._groundId&&s.active!==false&&overlapX(p,s)&&Math.abs(p.y-s.y)<4);
@@ -98,7 +100,7 @@ export class PlatformRun {
     p.vy=Math.min(1100,p.vy+GRAVITY*dt);p.y+=p.vy*dt;p.grounded=false;this._groundId=null;
     if(p.vy>=0){
       let landing=null;for(const s of this.platforms)if(s.active!==false&&overlapX(p,s,2)&&oldFeet<=s.y+5&&p.y>=s.y&&(!landing||s.y<landing.y))landing=s;
-      if(landing){const impact=p.vy,dropped=p.drop;p.y=landing.y;p.vy=0;p.grounded=true;p.jumps=0;p.drop=false;this._groundId=landing.id;this._coyote=.12;this.airStomps=0;if(!wasGrounded){this.emit('land',{x:p.x,y:p.y,speed:impact,drop:dropped,surface:landing.type});if(this.mode!=='running')return;}if(this._jumpBuffer>0)this.jump();}
+      if(landing){const impact=p.vy,dropped=p.drop;p.y=landing.y;p.vy=0;p.grounded=true;p.jumps=0;p.drop=false;this._groundId=landing.id;this._coyote=.12;this.airStomps=0;if(!wasGrounded){this.emit('land',{x:p.x,y:p.y,speed:impact,drop:dropped,surface:landing.type});if(this.mode!=='running')return;}if(this._jumpBuffer>0){const tapped=this._tapBuffered;this.jump();if(tapped)this._hopCut=.08;}}
     }else{
       for(const s of this.platforms){if(s.active===false||s.oneWay||!overlapX(p,s,3))continue;const bottom=s.y+s.h;if(oldFeet-H>=bottom-3&&p.y-H<=bottom){p.y=bottom+H;p.vy=70;this._hitBlock(s);break;}}
     }

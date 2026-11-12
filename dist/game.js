@@ -28,7 +28,7 @@ try{const saved=JSON.parse(storage?.getItem(PREFS_KEY)||'{}');for(const key of [
 function savePrefs(){try{storage?.setItem(PREFS_KEY,JSON.stringify(prefs));}catch{/* session only */}}
 const haptics=new Haptics({enabled:prefs.haptics}),hud=new Hud($);
 const coarsePointer=window.matchMedia('(pointer:coarse)');
-let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='',tipTime=0,rallyStartX=0;
+let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,wantAwake=false,wakePending=false,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='',tipTime=0,rallyStartX=0;
 const engines={platform:new PlatformRun({onEvent:onGameEvent}),scout:new ScoutRun({onEvent:onGameEvent}),snack:new SnackStorm({onEvent:onGameEvent}),rally:new RallyRun({onEvent:onGameEvent})};
 const held=new Set(),fxCanvas=$('celebrations'),fxContext=fxCanvas.getContext('2d');
 let fxW=0,fxH=0,fxDpr=1;
@@ -50,7 +50,7 @@ function clearInputs(){held.clear();controls.clear();run?.move?.(0,0);run?.brake
 function setScreen(next){
  screen=next;$('app').dataset.screen=next;$('app').dataset.activity=next==='home'?'':currentConfig?.mode||'';document.body.classList.toggle('playing',next!=='home');
  $('home-screen').hidden=next!=='home';$('camp-extras').hidden=next!=='home';$('run-ui').hidden=next==='home'||next==='result';$('pause-layer').hidden=next!=='paused';$('result-layer').hidden=next!=='result';
- $('play-controls').hidden=next!=='run'||currentConfig?.mode==='memory';controls.active=next==='run';
+ $('play-controls').hidden=next!=='run'||currentConfig?.mode==='memory';controls.active=next==='run';$('run-ui').inert=next!=='run';
  $('rally-canvas').hidden=next==='home'||currentConfig?.mode!=='rally';$('memory-board').hidden=next==='home'||currentConfig?.mode!=='memory';$('game').hidden=next!=='home'&&['rally','memory'].includes(currentConfig?.mode);
  $('arena').dataset.mode=next==='home'?'home':currentConfig?.mode||'platform';$('below-game').hidden=next!=='home';
  if(next!=='run')clearInputs();renderer.resize();rallyRenderer?.resize();resizeEffects();layoutInsets();dirty=true;
@@ -62,11 +62,21 @@ function layoutInsets(){
  const none={top:0,right:0,bottom:0,left:0};insetTime=clock;
  if(screen==='home'||!currentConfig){renderer.insets=none;return;}
  const arena=$('arena').getBoundingClientRect(),top=$('run-ui').hidden?arena.top:document.querySelector('#run-ui .hud-top').getBoundingClientRect().bottom;
- const insets={top:Math.max(0,Math.round(top-arena.top)),right:0,bottom:inputMode==='touch'?44+($('safe-probe').offsetHeight||0):0,left:0};
+ const probe=$('safe-probe'),safe=getComputedStyle(probe),side=value=>Math.max(0,Math.round(parseFloat(value)||0));
+ const insets={top:Math.max(0,Math.round(top-arena.top)),right:side(safe.paddingRight),bottom:inputMode==='touch'?44+(probe.offsetHeight||0):0,left:side(safe.paddingLeft)};
  $('app').style.setProperty('--hud-h',`${insets.top}px`);renderer.insets=insets;if(rallyRenderer)rallyRenderer.insets=insets;
 }
+// The request is asynchronous, so the wish is recorded first: a lock that
+// arrives after the run has ended is handed straight back.
 async function holdAwake(on){
- try{if(on&&!wakeLock&&navigator.wakeLock){const lock=await navigator.wakeLock.request('screen');wakeLock=lock;lock.addEventListener('release',()=>{if(wakeLock===lock)wakeLock=null;});}else if(!on&&wakeLock){const lock=wakeLock;wakeLock=null;await lock.release();}}catch{wakeLock=null;}
+ wantAwake=on;
+ try{
+  if(on&&!wakeLock&&!wakePending&&navigator.wakeLock){
+   wakePending=true;const lock=await navigator.wakeLock.request('screen');wakePending=false;
+   if(!wantAwake){await lock.release();return;}
+   wakeLock=lock;lock.addEventListener('release',()=>{if(wakeLock===lock)wakeLock=null;});
+  }else if(!on&&wakeLock){const lock=wakeLock;wakeLock=null;await lock.release();}
+ }catch{wakePending=false;wakeLock=null;}
 }
 function renderHome(){
  const s=journey.state,w=world(),next=continueLevel();$('wallet').textContent=num(s.wallet);$('medal-total').textContent=`${totalMedals()} / 90 medals`;
@@ -143,10 +153,10 @@ function renderResult(){
  $('result-content').innerHTML=`${medals}${p.newBest?'<span class="result-record">A NEW PERSONAL BEST</span>':''}<span class="eyebrow">${esc(WORLDS[r.worldIndex].name)} · ${esc(modeNames[r.mode])}</span><h2>${title}</h2><p class="result-line">${r.won?platform?`${esc(level(r.levelId).title)} is in the passport. There’s always another little path to explore.`:'Every little detour brings something good back to camp.':`The treats you found are safely in your backpack. ${r.mode==='platform'?'Try another route, change your charms, or have a quick mini-game break.':'Your next attempt is a fresh chance to find your rhythm.'}`}</p><div class="result-stats"><div><strong data-count="${Math.round(r.score)||0}">${num(r.score)}</strong><span>POINTS</span></div><div><strong data-count="${Math.round(r.treats)||0}">${num(r.treats)}</strong><span>TREATS FOUND</span></div><div><strong>${r.bestMultiplier||1}×</strong><span>BIGGEST STACK</span></div></div>${platform?`<div class="result-goals">${p.medalGoals.map(g=>`<span class="${g.earned?'done':''}">${g.earned?'✓ ':''}${esc(g.label)}</span>`).join('')}</div>`:''}<p class="reward-line">+<span data-count="${Math.round(p.earnedTreats)||0}">${num(p.earnedTreats)}</span> treats in your backpack${p.newMedals?` · +${p.newMedals} new medals`:''}</p>${rewards.length?`<p class="result-unlocks">${rewards.slice(0,4).map(esc).join('<br>')}</p>`:''}<button class="primary" data-result-action="${next?'next':'retry'}" ${next?`data-next-level="${next.id}"`:''}>${next?'The next little adventure':'Let’s do it again'} ${icon('arrow')}</button><div class="button-pair"><button class="secondary" data-result-action="${platform&&!currentConfig.dailyDate?'remix':'gear'}">${platform&&!currentConfig.dailyDate?'Remix this trail':'Visit the backpack'}</button><button class="secondary" data-result-action="home">Back to camp</button></div><div class="result-foot"><button class="text-button" data-result-action="quests">Check the quest board</button><button class="text-button" data-result-action="map">Explore the worlds</button></div>`;
 }
 const HAPTIC={'double-jump':'light',stomp:'stomp',smash:'stomp',pop:'light',hit:'hit',crash:'hit',shield:'medium',key:'gold',checkpoint:'medium',secret:'gold','boss-defeated':'success',power:'power',fever:'power','gold-rush':'gold',spring:'light',vent:'medium',block:'light',chest:'medium',match:'light',mismatch:'medium',deliver:'success',treasure:'gold',parcel:'medium','near-miss':'light',respawn:'light',
- flip:'tap',peek:'light',streak:'gold',swap:'medium','swap-done':'light','time-up':'medium','perfect-game':'max',go:'medium',ramp:'medium',landing:'medium',splash:'light',convoy:'success','final-push':'medium','finish-line':'success',bounce:'light',bloom:'medium',golden:'gold'};
+ flip:'tap',peek:'light',streak:'gold',swap:'medium','swap-done':'light','time-up':'medium','perfect-game':'max',go:'medium',ramp:'medium',landing:'medium',splash:'light',convoy:'success','final-push':'medium','finish-line':'success',bounce:'light',bloom:'medium',golden:'gold',trail:'light','trail-complete':'success',critter:'gold','paw-reveal':'light',paw:'success',greet:'light',bump:'tap'};
 // Events that make no sound of their own. An engine's own 'stack' event is
 // voiced by watchStack, which knows the real tier.
-const QUIET=['start','pause','resume','prompt','step','hint','won','lost','dialog','locked','restore','stack','swap-done'];
+const QUIET=['start','pause','resume','prompt','step','hint','won','lost','dialog','locked','restore','stack','swap-done','walk','walk-end','walk-wait','trail-fade','critter-back'];
 const SOUND_ALIAS={stomp:'spring',block:'collect',key:'unlock',chest:'unlock',secret:'mission',checkpoint:'unlock',fever:'combo','boss-defeated':'finish',pair:'collect',dodge:'near-miss'};
 function onGameEvent(e){
  if(!run||finishing)return;
@@ -154,7 +164,7 @@ function onGameEvent(e){
  forwardToView(e);
  if(!QUIET.includes(e.type))audio.play(audio.has?.(e.type)?e.type:SOUND_ALIAS[e.type]||e.type,{...e,gold:e.kind==='gold'});
  const last=e.remaining??e.seconds??e.count;
- const pulse=e.type==='collect'?(e.kind==='gold'?'gold':'collect'):['tick','final-tick','countdown'].includes(e.type)?(last<=3?'tap':null):HAPTIC[e.type];if(pulse)haptics.pulse(pulse);
+ const pulse=e.type==='collect'?(e.kind==='gold'?'gold':'collect'):['tick','final-tick','countdown'].includes(e.type)?(last<=3?'tap':null):e.type==='walk-end'?(e.reason==='hazard'?'medium':null):HAPTIC[e.type];if(pulse)haptics.pulse(pulse);
  if(e.type==='perfect-game')celebrations.burst({x:.5,y:.3,kind:'record'});
  if(e.type==='won'||e.type==='lost'){finishGame(e.result||run.result());return;}
  const power=ABILITIES[currentConfig?.characterId||'griffin'].name.toUpperCase();
@@ -198,7 +208,7 @@ function updateHud(){
 // First-time hints about where to touch. They fade once each move has been tried.
 const COACH={
  platform:[['slide','Slide to run','Left side. Flick up for power.','move'],['tap','Tap to jump','Right side. Hold for height, tap again in the air.','action']],
- scout:[['swipe','Swipe to walk','Or tap a tile to go there.','move'],['tap','Hold for a hint','Two fingers use your power.','']],
+ scout:[['swipe','Swipe to walk','Or tap a tile to go there.','move'],['tap','Press and hold for a hint','Two fingers use your power.','']],
  rally:[['drag','Drag to steer','Pull back to brake. Flick up to boost.','move']],
  snack:[['drag','Drag to catch','Flick up for your power.','move']]
 };
@@ -211,9 +221,11 @@ function showCoach(mode){
 function updateCoach(dt){
  if(coachTime<=0)return;const box=$('coach');let pending=0;
  for(const tip of box.children){const need=tip.dataset.need,done=need&&controls.used[need];tip.classList.toggle('done',!!done);if(need&&!done)pending++;}
+ // The moment every move has been tried, the tips are done for good on this phone.
+ if(!pending&&!prefs.coached[currentConfig.mode]){prefs.coached[currentConfig.mode]=true;savePrefs();}
  coachTime-=pending?dt:dt*3;
  if(coachTime<=1)box.classList.add('leaving');
- if(coachTime<=0){box.hidden=true;if(!pending){prefs.coached[currentConfig.mode]=true;savePrefs();}}
+ if(coachTime<=0)box.hidden=true;
 }
 function questHTML(worldIndex){return journey.questProgress(worldIndex).map(q=>`<article class="quest-card ${q.completed?'completed':''}"><small>${esc(CHARACTERS[q.character].name)} ${q.completed?'· FAVOR COMPLETE':'HAS A LITTLE FAVOR'}</small><h3>${esc(q.name)}</h3><p>${esc(q.description)}</p><div class="quest-track"><i style="width:${clamp(q.progress/q.target,0,1)*100}%"></i></div><footer><span>${q.completed?'✓ Complete':`${num(q.progress)} / ${q.target}`}</span><span>${q.completed?'Reward in your backpack':`+${q.reward} treats`}</span></footer></article>`).join('');}
 function openPanel(panel){
@@ -270,7 +282,8 @@ function scoutTap(x,y){
 }
 // The play field is the controller: see controls.js for the gestures.
 const controls=new Controls({canvas:$('game'),rallyCanvas:$('rally-canvas'),on:{
- gesture:()=>{gestureAudio();},
+ // A touch or click on the field also hands it the keyboard.
+ gesture:e=>{gestureAudio();const field=e?.currentTarget;if(field?.focus&&document.activeElement!==field)field.focus({preventScroll:true});},
  direction:(x,y)=>{if(screen==='run'&&currentConfig.mode==='scout'&&(x||y))haptics.pulse('tap');updateMovement();},
  jump:inputJump,releaseJump:()=>run?.releaseJump?.(),drop:()=>{if(screen==='run'&&currentConfig.mode==='platform')run.drop?.();},
  power:inputPower,hint:inputHint,
@@ -279,10 +292,35 @@ const controls=new Controls({canvas:$('game'),rallyCanvas:$('rally-canvas'),on:{
  tap:(x,y)=>{if(screen==='run'&&currentConfig.mode==='scout')scoutTap(x,y);}
 }});
 // Real buttons for keyboard, switch, and screen reader users. Hidden until focused.
-for(const [dir,x,y] of [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]])$(`${dir}-button`).addEventListener('click',()=>{if(screen!=='run')return;const m=currentConfig.mode;if(m==='scout')run.step?.(x,y);else if(m==='rally'&&y>0){run.brake(true);setTimeout(()=>updateMovement(),400);}else if(x){run.move?.(x);setTimeout(()=>updateMovement(),m==='rally'?300:180);}});
+// Each press nudges for a moment through the same held set the keyboard uses,
+// so nothing else (a key coming up, the next frame) cancels it early.
+const nudges={};
+for(const [dir,x,y] of [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]])$(`${dir}-button`).addEventListener('click',()=>{
+ if(screen!=='run')return;const m=currentConfig.mode;
+ if(m==='scout'){run.step?.(x,y);return;}
+ if(!x&&!(m==='rally'&&y>0))return;
+ held.add(dir);updateMovement();clearTimeout(nudges[dir]);nudges[dir]=setTimeout(()=>{held.delete(dir);updateMovement();},m==='rally'?(x?320:450):200);
+});
 $('jump-button').addEventListener('click',()=>{inputJump();setTimeout(()=>run?.releaseJump?.(),160);});$('power-button').addEventListener('click',inputPower);$('interact-button').addEventListener('click',inputInteract);$('hint-button').addEventListener('click',inputHint);
 // The HUD's glowing power layer and Trail Scout's hint chip can be tapped too.
-$('run-ui').addEventListener('click',e=>{if(e.target.closest('[data-layer=power]'))inputPower();else if(e.target.closest('#hint-chip'))inputHint();});
+// A phone only makes a click from a lone finger, and a thumb is usually
+// already steering, so touches act on the way down.
+const CHIPS='[data-layer=power],#hint-chip,#pause-button';let chipTouch=-1e9;
+const playField=()=>currentConfig?.mode==='rally'?$('rally-canvas'):$('game');
+function chipAction(target){
+ if(target.closest('#pause-button')){pause();return true;}
+ if(target.closest('[data-layer=power]')){inputPower();return true;}
+ if(target.closest('#hint-chip')){inputHint();return true;}
+ return false;
+}
+$('run-ui').addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||screen!=='run'||!e.target.closest(CHIPS))return;chipTouch=performance.now();chipAction(e.target);});
+$('run-ui').addEventListener('touchend',e=>{if(e.cancelable&&e.target.closest(CHIPS))e.preventDefault();},{passive:false});
+$('run-ui').addEventListener('click',e=>{
+ if(performance.now()-chipTouch<700||!e.target.closest(CHIPS))return;
+ const pausing=!!e.target.closest('#pause-button');chipAction(e.target);
+ // After a mouse click the keyboard goes back to the field, so Space still jumps.
+ if(!pausing&&e.detail>0&&screen==='run'&&currentConfig?.mode!=='memory')playField().focus({preventScroll:true});
+});
 const keyDirection={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down'};
 window.addEventListener('keydown',e=>{
  if(e.repeat&&['Escape','KeyP','KeyR'].includes(e.code))return;
@@ -301,7 +339,7 @@ window.addEventListener('keydown',e=>{
  if(e.code==='KeyX')inputPower();if(e.code==='KeyH')inputHint();if(e.code==='KeyE'||e.code==='Enter')inputInteract();
 });
 window.addEventListener('keyup',e=>{if(keyDirection[e.code])held.delete(keyDirection[e.code]);updateMovement();if(['Space','ArrowUp','KeyW'].includes(e.code)&&currentConfig?.mode==='platform')run?.releaseJump?.();});
-$('play-button').addEventListener('click',()=>startRun({mode:'platform',levelId:continueLevel().id}));$('daily-button').addEventListener('click',()=>startRun(journey.getDailyChallenge()));$('home-button').addEventListener('click',()=>screen==='run'?pause():home());$('pause-button').addEventListener('click',pause);$('resume-button').addEventListener('click',resume);$('restart-button').addEventListener('click',()=>restart());$('quit-button').addEventListener('click',home);$('sound-button').addEventListener('click',toggleSound);$('help-button').addEventListener('click',()=>openPanel('help'));$('install-button').addEventListener('click',()=>openPanel('install'));$('share-button').addEventListener('click',share);$('close-dialog').addEventListener('click',closePanel);$('reload-button').addEventListener('click',()=>location.reload());
+$('play-button').addEventListener('click',()=>startRun({mode:'platform',levelId:continueLevel().id}));$('daily-button').addEventListener('click',()=>startRun(journey.getDailyChallenge()));$('home-button').addEventListener('click',()=>screen==='run'?pause():home());$('resume-button').addEventListener('click',resume);$('restart-button').addEventListener('click',()=>restart());$('quit-button').addEventListener('click',home);$('sound-button').addEventListener('click',toggleSound);$('help-button').addEventListener('click',()=>openPanel('help'));$('install-button').addEventListener('click',()=>openPanel('install'));$('share-button').addEventListener('click',share);$('close-dialog').addEventListener('click',closePanel);$('reload-button').addEventListener('click',()=>location.reload());
 document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;
  if(d.panel){gestureAudio();audio.play('click');openPanel(d.panel);}
@@ -356,6 +394,8 @@ if('serviceWorker' in navigator&&!['localhost','127.0.0.1'].includes(location.ho
 }
 function resizeEffects(){const r=$('arena').getBoundingClientRect();fxW=r.width;fxH=r.height;fxDpr=Math.min(2,window.devicePixelRatio||1);fxCanvas.width=Math.round(fxW*fxDpr);fxCanvas.height=Math.round(fxH*fxDpr);fxBusy=true;dirty=true;}
 new ResizeObserver(()=>{resizeEffects();layoutInsets();}).observe($('arena'));
+// The HUD grows when goals wrap or a row appears; the field hears about it at once.
+new ResizeObserver(()=>{if(screen!=='home'){layoutInsets();dirty=true;}}).observe(document.querySelector('#run-ui .hud-top'));
 let frameDt=0;
 function frame(now){
  // Re-arm first: one bad frame must never stop the game.

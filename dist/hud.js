@@ -11,10 +11,12 @@ export const tierOf=total=>{let tier=0;for(const t of STACK_TIERS)if(total>=t)ti
 // Pure description of the bonus stack, shared by the HUD and its tests.
 export function stackLayers(run,characterId='griffin'){
   const chain=run.multiplier||1,combo=run.combo||0,frenzy=run.feverTime>0,gold=run.goldRushTime>0,power=run.powerTime>0,griffin=characterId==='griffin';
+  // RV Rally asks for a slightly longer chain and runs a slightly shorter frenzy.
+  const rally=run.runMode==='rally',need=rally?20:18,span=rally?7:8,cooling=!frenzy&&run._feverCooldown>0;
   return {
     total:Number((run.totalMultiplier||chain).toFixed(1)),
     chain:{on:chain>1,value:chain,fill:combo>0?clamp((run.comboTime||0)/5.4,0,1):0,next:chain>=5?1:clamp((combo%6)/6,0,1)},
-    frenzy:{on:frenzy,value:2,fill:frenzy?clamp(run.feverTime/8,0,1):clamp(combo/18,0,1)},
+    frenzy:{on:frenzy,value:2,cooling,fill:frenzy?clamp(run.feverTime/span,0,1):cooling?0:clamp(combo/need,0,1)},
     gold:{on:gold,value:2,fill:gold?clamp(run.goldRushTime/12,0,1):0},
     power:{on:power,value:griffin?1.5:1,counts:griffin,fill:power?clamp(run.powerTime/(run.powerDuration||5),0,1):clamp((run.charge||0)/100,0,1)}
   };
@@ -97,6 +99,7 @@ export class Hud {
       this.text('chain:value',n.chain.value,`×${s.chain.value}`);
       this.set('power:ready',n.power.node,!s.power.on&&(run.charge||0)>=100,(el,v)=>{el.classList.toggle('ready',v);if(v)this.pop(el);});
       this.set('chain:low',n.chain.node,s.chain.on&&s.chain.fill<.35,(el,v)=>el.classList.toggle('low',v));
+      this.set('frenzy:cooling',n.frenzy.node,s.frenzy.cooling,(el,v)=>el.classList.toggle('cooling',v));
     }
     // Screen reader friendly summary line (also the desktop combo label).
     this.text('combo',e.combo,run.combo>0?`${num(run.combo)} ${m==='memory'?'pair':'snack'} chain`:'');
