@@ -28,7 +28,7 @@ try{const saved=JSON.parse(storage?.getItem(PREFS_KEY)||'{}');for(const key of [
 function savePrefs(){try{storage?.setItem(PREFS_KEY,JSON.stringify(prefs));}catch{/* session only */}}
 const haptics=new Haptics({enabled:prefs.haptics}),hud=new Hud($);
 const coarsePointer=window.matchMedia('(pointer:coarse)');
-let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='';
+let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='',tipTime=0;
 const engines={platform:new PlatformRun({onEvent:onGameEvent}),scout:new ScoutRun({onEvent:onGameEvent}),snack:new SnackStorm({onEvent:onGameEvent}),rally:new RallyRun({onEvent:onGameEvent})};
 const held=new Set(),fxCanvas=$('celebrations'),fxContext=fxCanvas.getContext('2d');
 let fxW=0,fxH=0,fxDpr=1;
@@ -97,7 +97,7 @@ function startRun(selection={mode:'platform',levelId:continueLevel().id},{fresh=
  if(config.mode==='snack'){run.worldIndex=config.worldIndex;run.stage=config.worldIndex;run.dailyDate=config.dailyDate||'';}
  if(config.mode==='rally'&&!rallyRenderer)rallyRenderer=new RallyRenderer($('rally-canvas'));
  if(config.mode==='rally'&&prefs.tilt)controls.enableTilt().then(ok=>{if(ok)controls.calibrateTilt();});
- lastSign='';configureControls();setScreen('run');showCoach(config.mode);audio.setScene('run',config.worldIndex);frameTime=performance.now();window.scrollTo({top:0,behavior:'instant'});updateHud();
+ lastSign='';tipTime=clock;$('mode-tip').parentElement.classList.remove('faded');configureControls();setScreen('run');showCoach(config.mode);audio.setScene('run',config.worldIndex);frameTime=performance.now();window.scrollTo({top:0,behavior:'instant'});updateHud();
  if(config.mode==='memory')memoryGame.focus();else (config.mode==='rally'?$('rally-canvas'):$('game')).focus({preventScroll:true});
  if(config.checkpoint)callout('Right where you left your pawprints.');
  else if(config.mode!=='memory')callout({platform:'Two keys. Three golden snacks. One great adventure.',scout:'Find 3 treasures, a key, and a parcel for your neighbor.',rally:'Follow the snacks. Steer clear. Boost when you’re ready.',snack:'Catch treats. Dodge mud. Stack the good stuff!'}[config.mode],2600);
@@ -368,6 +368,7 @@ function step(dt){
    }
    if(live)updateHud();
    if(clock-insetTime>1.5&&playing)layoutInsets();
+   if(playing&&tipTime&&clock-tipTime>9){tipTime=0;$('mode-tip').parentElement.classList.add('faded');}
    if(screen==='finale'){finaleTimer-=dt;if(finaleTimer<=0)showResult();}
   }
   if(resultStep&&resultStep(dt))resultStep=null;
