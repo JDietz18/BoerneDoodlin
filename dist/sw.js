@@ -8,7 +8,7 @@ const CORE=[
   '/renderer.js?v=22','/adventure-engine.js?v=22','/characters.js?v=22',
   '/audio.js?v=22','/celebrations.js?v=22','/fx.js?v=22','/scout-view.js?v=22',
   '/hud.js?v=22','/controls.js?v=22','/haptics.js?v=22','/compat.js?v=22','/play.css?v=22','/camp.css?v=22',
-  '/assets/griffin-character-atlas.png?v=22','/assets/kevin-atlas.png?v=22',
+  '/assets/griffin-character-atlas.png?v=22','/assets/pumpkin-atlas.png?v=22',
   '/assets/mittens-atlas.png?v=22','/assets/spike-atlas.png?v=22',
   '/assets/family-rv.png','/assets/route-biomes.jpg',
   '/assets/griffin-atlas.png', // Existing snack/obstacle props only.

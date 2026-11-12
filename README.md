@@ -1,6 +1,6 @@
 # Doodle Onward
 
-One great road trip, thirty platform adventures, and a family with an unusually strong interest in snacks. Griffin, the BoerneDoodle, heads toward Boerne with Kevin, Mittens, and Spike. Kevin remains the family's forever guide.
+One great road trip, thirty platform adventures, and a family with an unusually strong interest in snacks. Griffin, the BoerneDoodle, heads toward Boerne with Pumpkin the princess cat, Mittens the house panther, and Spike. Kevin remains the family's forever guide.
 
 **Play:** [Doodle Onward](https://griffin-snack-patrol.jdietz.chatgpt.site/). That is the published site; this repository holds its source. A Griffin game about the move.
 

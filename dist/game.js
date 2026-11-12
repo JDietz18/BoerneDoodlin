@@ -1,5 +1,5 @@
 import './compat.js?v=22';
-import {CHARACTERS,PLAYABLE_IDS,ABILITIES} from './characters.js?v=22';
+import {CHARACTERS,PLAYABLE_IDS,ABILITIES,GUIDE} from './characters.js?v=22';
 import {AdventureRenderer} from './platform-renderer.js?v=22';
 import {PlatformRun} from './platform-engine.js?v=22';
 import {ScoutRun} from './scout-engine.js?v=22';
@@ -15,6 +15,8 @@ import {Haptics} from './haptics.js?v=22';
 
 const $=id=>document.getElementById(id),num=n=>Math.round(Number(n)||0).toLocaleString(),clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=(name,cls='')=>`<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+// Quest favors from the second slot are still Kevin's: he guides, Pumpkin plays.
+const giver=id=>id===GUIDE.id?GUIDE.name:CHARACTERS[id].name;
 const modeNames={platform:'Platform adventure',scout:'Trail Scout',rally:'RV Rally',snack:'Snack Storm',memory:'Camp Pairs'};
 const charmSymbols=['✦','✧','◈','♧','❋','☾','☀','↟','⌘','◆','↗','✺'];
 let storage;try{storage=window.localStorage;}catch{storage=null;}
@@ -89,9 +91,9 @@ function renderHome(){
  $('play-label').textContent=s.checkpoints[next.id]?'Continue your adventure':s.counters.runs?'Onward, adventurer!':'Let’s go on an adventure';$('play-detail').textContent=`${w.name} · ${next.title}`;$('play-button').disabled=!ready;
  $('hero-world').innerHTML=`<span>CHAPTER ${String(w.index+1).padStart(2,'0')} / 05</span><strong>${esc(w.name)}</strong><small>${esc(w.tagline)}</small>`;
  $('crew-perk').textContent=`${CHARACTERS[s.selectedCharacter].name} · ${ABILITIES[s.selectedCharacter].name}`;
- $('crew').innerHTML=PLAYABLE_IDS.map(id=>`<button class="crew-choice ${s.selectedCharacter===id?'active':''}" data-character="${id}" aria-pressed="${s.selectedCharacter===id}" aria-label="Play as ${CHARACTERS[id].name}. ${esc(ABILITIES[id].detail)}"><canvas data-portrait="${id}" width="120" height="120" aria-hidden="true"></canvas><span><strong>${CHARACTERS[id].name}</strong><small>${id==='kevin'?'Forever guide':ABILITIES[id].name}</small></span>${s.selectedCharacter===id?'<b class="crew-check">✓</b>':''}</button>`).join('');
+ $('crew').innerHTML=PLAYABLE_IDS.map(id=>`<button class="crew-choice ${s.selectedCharacter===id?'active':''}" data-character="${id}" aria-pressed="${s.selectedCharacter===id}" aria-label="Play as ${CHARACTERS[id].name}. ${esc(ABILITIES[id].detail)}"><canvas data-portrait="${id}" width="120" height="120" aria-hidden="true"></canvas><span><strong>${CHARACTERS[id].name}</strong><small>${ABILITIES[id].name}</small></span>${s.selectedCharacter===id?'<b class="crew-check">✓</b>':''}</button>`).join('');
  const d=journey.getDailyChallenge();$('daily-title').textContent=`${modeNames[d.mode]} · ${WORLDS[d.worldIndex].name}`;$('daily-detail').textContent=d.claimed?`Bonus banked. Today’s best: ${num(d.bestScore)} points.`:`Finish today’s shared course for ${d.bonus} bonus treats. Standard gear keeps the challenge even.`;$('daily-button').textContent=d.claimed?'Beat your best':'Play today';
- const quests=journey.questProgress(s.selectedWorld),complete=quests.filter(q=>q.completed).length,nextQuest=quests.find(q=>!q.completed);$('quest-preview').innerHTML=`<span class="quest-ring" style="--progress:${complete/4*100}%"><span>${complete}/4</span></span><div><span class="eyebrow">THE FAMILY QUEST BOARD</span><h3>${nextQuest?esc(nextQuest.name):'Every little favor, done.'}</h3><p>${nextQuest?`${CHARACTERS[nextQuest.character].name} has a favor. ${num(nextQuest.progress)} / ${nextQuest.target} so far.`:'More family adventures await in the next world.'}</p></div><button data-panel="quests" aria-label="Open family quest board">${icon('arrow')}</button>`;
+ const quests=journey.questProgress(s.selectedWorld),complete=quests.filter(q=>q.completed).length,nextQuest=quests.find(q=>!q.completed);$('quest-preview').innerHTML=`<span class="quest-ring" style="--progress:${complete/4*100}%"><span>${complete}/4</span></span><div><span class="eyebrow">THE FAMILY QUEST BOARD</span><h3>${nextQuest?esc(nextQuest.name):'Every little favor, done.'}</h3><p>${nextQuest?`${giver(nextQuest.character)} has a favor. ${num(nextQuest.progress)} / ${nextQuest.target} so far.`:'More family adventures await in the next world.'}</p></div><button data-panel="quests" aria-label="Open family quest board">${icon('arrow')}</button>`;
  $('adventure-tags').innerHTML=[['star',`${totalMedals()}/90 medals`],['bone',`${num(s.wallet)} treats`],['bolt',`${s.counters.bestMultiplier||1}× best stack`]].map(([i,t])=>`<span>${icon(i)}${t}</span>`).join('');
  renderArcade(d);renderMap();paintPortraits();syncSettings();document.querySelectorAll('[data-start-mode],#daily-button').forEach(b=>b.disabled=!ready);
 }
@@ -266,7 +268,7 @@ function updateCoach(dt){
  if(coachTime<=1)box.classList.add('leaving');
  if(coachTime<=0)box.hidden=true;
 }
-function questHTML(worldIndex){return journey.questProgress(worldIndex).map(q=>`<article class="quest-card ${q.completed?'completed':''}"><small>${esc(CHARACTERS[q.character].name)} ${q.completed?'· FAVOR COMPLETE':'HAS A LITTLE FAVOR'}</small><h3>${esc(q.name)}</h3><p>${esc(q.description)}</p><div class="quest-track"><i style="width:${clamp(q.progress/q.target,0,1)*100}%"></i></div><footer><span>${q.completed?'✓ Complete':`${num(q.progress)} / ${q.target}`}</span><span>${q.completed?'Reward in your backpack':`+${q.reward} treats`}</span></footer></article>`).join('');}
+function questHTML(worldIndex){return journey.questProgress(worldIndex).map(q=>`<article class="quest-card ${q.completed?'completed':''}"><small>${esc(giver(q.character))} ${q.completed?'· FAVOR COMPLETE':'HAS A LITTLE FAVOR'}</small><h3>${esc(q.name)}</h3><p>${esc(q.description)}</p><div class="quest-track"><i style="width:${clamp(q.progress/q.target,0,1)*100}%"></i></div><footer><span>${q.completed?'✓ Complete':`${num(q.progress)} / ${q.target}`}</span><span>${q.completed?'Reward in your backpack':`+${q.reward} treats`}</span></footer></article>`).join('');}
 function openPanel(panel){
  const fresh=activePanel!==panel||!$('panel-dialog').open;if(screen==='run')pause();activePanel=panel;const s=journey.state;let title='',html='';
  if(panel==='quests'){

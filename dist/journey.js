@@ -6,7 +6,7 @@ export const MODES=['platform','scout','snack','memory','rally'];
 const LEGACY_KEY='boerne-doodlin-adventure-v2';
 const VERSION=1,LIMIT=1_000_000_000,RECEIPT_LIMIT=384;
 const CREW=['griffin','kevin','mittens','spike'];
-const NAMES={griffin:'Griffin',kevin:'Kevin',mittens:'Mittens',spike:'Spike'};
+const NAMES={griffin:'Griffin',kevin:'Pumpkin',mittens:'Mittens',spike:'Spike'};
 
 export const UPGRADES=[
   {id:'magnet',name:'Snack magnet',description:'Bring nearby treats within reach.',maxLevel:3,costs:[60,120,200]},
@@ -49,7 +49,7 @@ export const QUESTS=[
   {id:'boerne-feast',worldIndex:4,character:'griffin',name:'A welcome-home feast',description:'Gather 150 treats around Boerne Hills. Guests may include everyone.',metric:'treats',target:150,reward:65},
   {id:'boerne-scout',worldIndex:4,character:'kevin',name:'Something for everyone',description:'Discover ten treasures while exploring Boerne Hills.',metric:'treasures',mode:'scout',target:10,reward:65},
   {id:'boerne-stack',worldIndex:4,character:'mittens',name:'A very fine bonus blanket',description:'Stack your score multiplier to at least 10× in one Boerne activity.',metric:'bestMultiplier',aggregation:'max',target:10,reward:70},
-  {id:'boerne-family',worldIndex:4,character:'spike',name:'Everyone, all together',description:'Take Griffin, Kevin, Mittens, and Spike on a Boerne activity.',metric:'crew',target:4,reward:75}
+  {id:'boerne-family',worldIndex:4,character:'spike',name:'Everyone, all together',description:'Take Griffin, Pumpkin, Mittens, and Spike on a Boerne activity.',metric:'crew',target:4,reward:75}
 ];
 
 export const ACHIEVEMENTS=[
