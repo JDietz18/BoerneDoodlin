@@ -23,12 +23,12 @@ const renderer=new AdventureRenderer($('game')),audio=new GameAudio({enabled:jou
 let rallyRenderer=null,memoryGame=null;
 // Preferences that belong to this device rather than to the travelling save.
 const PREFS_KEY='doodle-onward-device-v1';
-const prefs={haptics:true,tilt:false};
-try{const saved=JSON.parse(storage?.getItem(PREFS_KEY)||'{}');for(const key of Object.keys(prefs))if(typeof saved[key]==='boolean')prefs[key]=saved[key];}catch{/* defaults */}
+const prefs={haptics:true,tilt:false,coached:{}};
+try{const saved=JSON.parse(storage?.getItem(PREFS_KEY)||'{}');for(const key of ['haptics','tilt'])if(typeof saved[key]==='boolean')prefs[key]=saved[key];for(const mode of Object.keys(saved.coached||{}))if(saved.coached[mode]===true)prefs.coached[mode]=true;}catch{/* defaults */}
 function savePrefs(){try{storage?.setItem(PREFS_KEY,JSON.stringify(prefs));}catch{/* session only */}}
 const haptics=new Haptics({enabled:prefs.haptics}),hud=new Hud($);
 const coarsePointer=window.matchMedia('(pointer:coarse)');
-let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,dirty=true,frameCount=0,frameFailed=false,insetTime=0,braking=false,fxBusy=true;
+let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='';
 const engines={platform:new PlatformRun({onEvent:onGameEvent}),scout:new ScoutRun({onEvent:onGameEvent}),snack:new SnackStorm({onEvent:onGameEvent}),rally:new RallyRun({onEvent:onGameEvent})};
 const held=new Set(),fxCanvas=$('celebrations'),fxContext=fxCanvas.getContext('2d');
 let fxW=0,fxH=0,fxDpr=1;
@@ -46,7 +46,7 @@ function paintPortraits(){if(ready)document.querySelectorAll('canvas[data-portra
 function syncSettings(){const s=journey.state.settings;$('sound-button').classList.toggle('muted',!s.sound);$('sound-button').setAttribute('aria-pressed',String(s.sound));$('sound-button').setAttribute('aria-label',s.sound?'Turn sound off':'Turn sound on');document.documentElement.dataset.reducedMotion=String(reduced());}
 function gestureAudio(){audio.setEnabled(journey.state.settings.sound);audio.unlock();}
 function toggleSound(){const enabled=!journey.state.settings.sound;audio.setEnabled(enabled);journey.setSetting('sound',enabled);if(enabled)audio.unlock();persist();syncSettings();audio.play('click');}
-function clearInputs(){held.clear();braking=false;controls.clear();run?.move?.(0,0);run?.brake?.(false);run?.releaseJump?.();}
+function clearInputs(){held.clear();controls.clear();run?.move?.(0,0);run?.brake?.(false);run?.releaseJump?.();}
 function setScreen(next){
  screen=next;$('app').dataset.screen=next;$('app').dataset.activity=next==='home'?'':currentConfig?.mode||'';document.body.classList.toggle('playing',next!=='home');
  $('home-screen').hidden=next!=='home';$('camp-extras').hidden=next!=='home';$('run-ui').hidden=next==='home'||next==='result';$('pause-layer').hidden=next!=='paused';$('result-layer').hidden=next!=='result';
@@ -56,13 +56,13 @@ function setScreen(next){
  if(next!=='run')clearInputs();renderer.resize();rallyRenderer?.resize();resizeEffects();layoutInsets();dirty=true;
  holdAwake(next==='run');
 }
-function setInputMode(mode){if(inputMode===mode&&$('app').dataset.input===mode)return;inputMode=mode;$('app').dataset.input=mode;controls.touchMode=mode==='touch';layoutInsets();dirty=true;}
+function setInputMode(mode){if(inputMode===mode&&$('app').dataset.input===mode)return;inputMode=mode;$('app').dataset.input=mode;controls.touchMode=mode==='touch';if(mode!=='touch')$('coach').hidden=true;layoutInsets();dirty=true;}
 // Tells each view which screen edges the HUD and the touch controls cover.
 function layoutInsets(){
  const none={top:0,right:0,bottom:0,left:0};insetTime=clock;
  if(screen==='home'||!currentConfig){renderer.insets=none;return;}
  const arena=$('arena').getBoundingClientRect(),top=$('run-ui').hidden?arena.top:document.querySelector('#run-ui .hud-top').getBoundingClientRect().bottom;
- const insets={top:Math.max(0,Math.round(top-arena.top)),right:0,bottom:screen==='run'?controls.insetBottom($('arena')):renderer.insets.bottom||0,left:0};
+ const insets={top:Math.max(0,Math.round(top-arena.top)),right:0,bottom:inputMode==='touch'?44+($('safe-probe').offsetHeight||0):0,left:0};
  $('app').style.setProperty('--hud-h',`${insets.top}px`);renderer.insets=insets;if(rallyRenderer)rallyRenderer.insets=insets;
 }
 async function holdAwake(on){
@@ -97,10 +97,10 @@ function startRun(selection={mode:'platform',levelId:continueLevel().id},{fresh=
  if(config.mode==='snack'){run.worldIndex=config.worldIndex;run.stage=config.worldIndex;run.dailyDate=config.dailyDate||'';}
  if(config.mode==='rally'&&!rallyRenderer)rallyRenderer=new RallyRenderer($('rally-canvas'));
  if(config.mode==='rally'&&prefs.tilt)controls.enableTilt().then(ok=>{if(ok)controls.calibrateTilt();});
- configureControls();setScreen('run');audio.setScene('run',config.worldIndex);frameTime=performance.now();window.scrollTo({top:0,behavior:'instant'});updateHud();
+ lastSign='';configureControls();setScreen('run');showCoach(config.mode);audio.setScene('run',config.worldIndex);frameTime=performance.now();window.scrollTo({top:0,behavior:'instant'});updateHud();
  if(config.mode==='memory')memoryGame.focus();else (config.mode==='rally'?$('rally-canvas'):$('game')).focus({preventScroll:true});
  if(config.checkpoint)callout('Right where you left your pawprints.');
- else if(config.mode!=='memory')callout({platform:'Two keys. Three golden snacks. One great adventure.',scout:'Find 3 treasures, a key, and a parcel for your neighbor.',rally:inputMode==='touch'?'Drag or slide to steer. Follow the snacks!':'Follow the snacks. Steer clear. Boost when you’re ready.',snack:inputMode==='touch'?'Drag to catch treats. Dodge the mud!':'Catch treats. Dodge mud. Stack the good stuff!'}[config.mode],2600);
+ else if(config.mode!=='memory')callout({platform:'Two keys. Three golden snacks. One great adventure.',scout:'Find 3 treasures, a key, and a parcel for your neighbor.',rally:'Follow the snacks. Steer clear. Boost when you’re ready.',snack:'Catch treats. Dodge mud. Stack the good stuff!'}[config.mode],2600);
  announce(`${modeNames[config.mode]} in ${WORLDS[config.worldIndex].name}.`);
 }
 function saveCheckpoint(){if(run?.runMode==='platform'&&!currentConfig?.dailyDate&&!currentConfig?.remix&&['running','paused'].includes(run.mode)&&run.time>1){journey.saveCheckpoint(run.levelId,run.snapshot());persist();}}
@@ -146,7 +146,8 @@ function onGameEvent(e){
  const pulse=e.type==='collect'?(e.kind==='gold'?'gold':'collect'):HAPTIC[e.type];if(pulse)haptics.pulse(pulse);
  if(e.type==='won'||e.type==='lost'){finishGame(e.result||run.result());return;}
  const power=ABILITIES[currentConfig?.characterId||'griffin'].name.toUpperCase();
- const text={charged:mode==='rally'?'BOOST READY!':`${power} READY!`,checkpoint:'Checkpoint saved. Take the scenic route.','boss-defeated':'Snack dispute settled. Onward!','deliver':'Special delivery. Good neighbor energy.','parcel':'The picnic bundle! Bring it to your neighbor.'}[e.type];
+ const how=inputMode!=='touch'?'Press X.':mode==='scout'?'Tap with two fingers.':'Flick up!';
+ const text={charged:`${mode==='rally'?'BOOST':power} READY! ${how}`,checkpoint:'Checkpoint saved. Take the scenic route.','boss-defeated':'Snack dispute settled. Onward!','deliver':'Special delivery. Good neighbor energy.','parcel':'The picnic bundle! Bring it to your neighbor.'}[e.type];
  if(text)callout(text,e.type==='checkpoint'?1600:2000);
  if(mode==='scout'&&e.type==='chest')callout('Another treasure for the passport.',1800);
  if(['dialog','locked'].includes(e.type)||(e.type==='hint'&&mode==='scout'))callout(e.text||e.message||'Follow the glowing path.',3300);
@@ -171,20 +172,37 @@ function watchStack(){
  const combo=run.combo||0;if(lastCombo>=6&&combo===0){audio.play('chain-lost');forwardToView({type:'chain-lost',combo:lastCombo});}lastCombo=combo;
 }
 function configureControls(){
- const m=currentConfig.mode,ability=ABILITIES[currentConfig.characterId],lv=m==='platform'?level(currentConfig.levelId):null,w=WORLDS[currentConfig.worldIndex],touch=inputMode==='touch';
- controls.configure(m,{powerLabel:m==='rally'?'BOOST':ability.name.split(' ').at(-1).toUpperCase(),powerAria:m==='rally'?'Use boost when charged':`Use ${ability.name}`});
- hud.begin({mode:m,characterId:currentConfig.characterId,powerName:ability.name,requiredKeys:run?.requiredKeys||2,maxHearts:run?.maxHearts||3,
+ const m=currentConfig.mode,ability=ABILITIES[currentConfig.characterId],lv=m==='platform'?level(currentConfig.levelId):null,w=WORLDS[currentConfig.worldIndex];
+ controls.configure(m);
+ hud.begin({mode:m,characterId:currentConfig.characterId,powerName:m==='rally'?'boost':ability.name,requiredKeys:run?.requiredKeys||2,maxHearts:run?.maxHearts||3,
   region:m==='platform'?`${currentConfig.worldIndex+1}-${lv.index+1} · ${lv.title}`:w.name,
-  tip:touch?'':{platform:'← → move · Space jump twice · ↓ drop · X power · E open',scout:'Arrows move · E interact · H hint · X power',rally:'← → steer · ↓ brake · X boost',snack:'← → move or drag · X power',memory:''}[m]});
+  tip:{platform:'← → move · Space jump twice · ↓ drop · X power · E open',scout:'Arrows move · E interact · H hint · X power',rally:'← → steer · ↓ brake · X boost',snack:'← → move · X power',memory:''}[m]});
+ for(const [id,show] of Object.entries({up:m==='scout',down:m==='scout'||m==='rally',jump:m==='platform',interact:m==='platform'||m==='scout',hint:m==='scout',left:m!=='memory',right:m!=='memory',power:m!=='memory'}))$(`${id}-button`).hidden=!show;
 }
 function updateHud(){
- if(!run||screen==='home'||screen==='result')return;const m=currentConfig.mode;
+ if(!run||screen==='home'||screen==='result')return;
  hud.update(run,frameDt,{reduced:reduced()});
  $('wallet').textContent=num(journey.state.wallet);
- const charge=run.charge||0;controls.setPower(charge,charge>=100||run.powerTime>0);
- if(m==='scout')controls.setHint(run.hintsRemaining??3);
- const type=run.interaction?.type,touch=inputMode==='touch';
- controls.setInteract(m==='platform'?(type==='sign'?'READ':type==='chest'&&!touch?'OPEN':null):m==='scout'?(type==='npc'?'TALK':type==='exit'?'FINISH':type?'OPEN':null):null);
+}
+// First-time hints about where to touch. They fade once each move has been tried.
+const COACH={
+ platform:[['slide','Slide to run','Left side. Flick up for power.','move'],['tap','Tap to jump','Right side. Hold for height, tap again in the air.','action']],
+ scout:[['swipe','Swipe to walk','Or tap a tile to go there.','move'],['tap','Hold for a hint','Two fingers use your power.','']],
+ rally:[['drag','Drag to steer','Pull back to brake. Flick up to boost.','move']],
+ snack:[['drag','Drag to catch','Flick up for your power.','move']]
+};
+function showCoach(mode){
+ const tips=COACH[mode],box=$('coach');box.hidden=true;coachTime=0;
+ if(!tips||inputMode!=='touch'||prefs.coached[mode]||currentConfig?.checkpoint)return;
+ box.innerHTML=tips.map(([motion,title,detail,need])=>`<div class="coach-tip" data-need="${need}"><span class="coach-hand ${motion}"></span><span>${title}<br><small>${detail}</small></span></div>`).join('');
+ box.classList.remove('leaving');box.hidden=false;coachTime=9;
+}
+function updateCoach(dt){
+ if(coachTime<=0)return;const box=$('coach');let pending=0;
+ for(const tip of box.children){const need=tip.dataset.need,done=need&&controls.used[need];tip.classList.toggle('done',!!done);if(need&&!done)pending++;}
+ coachTime-=pending?dt:dt*3;
+ if(coachTime<=1)box.classList.add('leaving');
+ if(coachTime<=0){box.hidden=true;if(!pending){prefs.coached[currentConfig.mode]=true;savePrefs();}}
 }
 function questHTML(worldIndex){return journey.questProgress(worldIndex).map(q=>`<article class="quest-card ${q.completed?'completed':''}"><small>${esc(CHARACTERS[q.character].name)} ${q.completed?'· FAVOR COMPLETE':'HAS A LITTLE FAVOR'}</small><h3>${esc(q.name)}</h3><p>${esc(q.description)}</p><div class="quest-track"><i style="width:${clamp(q.progress/q.target,0,1)*100}%"></i></div><footer><span>${q.completed?'✓ Complete':`${num(q.progress)} / ${q.target}`}</span><span>${q.completed?'Reward in your backpack':`+${q.reward} treats`}</span></footer></article>`).join('');}
 function openPanel(panel){
@@ -197,7 +215,7 @@ function openPanel(panel){
   title='A passport full of pawprints.';const completed=s.worlds.reduce((n,w)=>n+w.clears,0),questCount=QUESTS.filter(q=>s.quests[q.id].completed).length;
   html=`<p class="panel-intro">Every outing leaves a little story. Chase all 90 medals, complete the family’s favors, and keep the best bonus stacks coming. Your progress stays on this browser.</p><div class="records-grid">${[[`${completed}/30`,'TRAILS CLEARED'],[`${totalMedals()}/90`,'SHINY MEDALS'],[`${questCount}/20`,'FAMILY FAVORS'],[`${s.counters.bestMultiplier}×`,'BIGGEST STACK'],...Object.entries(modeNames).map(([m,n])=>[num(s.records[m].score),`${n.toUpperCase()} BEST`]),[num(s.counters.treats),'TREATS FOUND'],[num(s.counters.secrets),'SECRETS REVEALED'],[num(s.counters.runs),'FAMILY OUTINGS']].map(([v,l])=>`<div class="record-card"><strong>${v}</strong><span>${l}</span></div>`).join('')}</div><h3 class="panel-heading">Stickers from the road</h3><div class="sticker-grid">${STICKERS.map(st=>`<div class="sticker ${s.passport.stickers.includes(st.id)?'earned':''}" title="${esc(st.description)}"><span aria-hidden="true">${st.kind==='world'?'✦':st.kind==='crew'?'♧':({platform:'↟',scout:'✧',rally:'▰',snack:'❋',memory:'◈'}[st.mode])}</span><strong>${esc(st.name)}</strong></div>`).join('')}</div><h3 class="panel-heading">The whole crew</h3><div class="family-records">${PLAYABLE_IDS.map(id=>`<div><canvas data-portrait="${id}" width="150" height="150" aria-hidden="true"></canvas><strong>${CHARACTERS[id].name}</strong><span>${num(s.counters.characters[id].runs)} outings</span></div>`).join('')}</div><p class="record-note">Kevin, our forever guide. Always part of the family, and along for every mile.</p><h3 class="panel-heading">Little legends</h3><div class="quest-grid">${ACHIEVEMENTS.map(a=>`<article class="quest-card ${s.passport.achievements.includes(a.id)?'completed':''}"><small>${s.passport.achievements.includes(a.id)?'✓ ACHIEVEMENT EARNED':'A LITTLE SOMETHING TO AIM FOR'}</small><h3>${esc(a.name)}</h3><p>${esc(a.description)}</p></article>`).join('')}</div><h3 class="panel-heading">Bring your progress along.</h3><p class="panel-intro">Download a backup before changing browsers or devices. Import it here to continue the trip. Importing replaces the progress on this device.</p><div class="export-row"><button class="secondary" id="export-save">Download save backup</button><button class="secondary" id="import-save">Import save backup</button><input id="import-file" type="file" accept="application/json,.json" hidden></div><p class="panel-intro">No file handy? Copy your backup as text, send it to the other phone in a message or a note, and paste it there.</p><div class="export-row"><button class="secondary" id="copy-save">Copy backup text</button><button class="secondary" id="paste-save">Paste backup text</button></div><div class="paste-row" id="paste-row" hidden><textarea id="paste-save-text" rows="4" aria-label="Backup text" placeholder="Paste your Doodle Onward backup text here" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea><button class="primary" id="restore-save">Continue from this backup</button></div>${s.migration.imported?'<p class="record-note">Your previous adventure’s treats, upgrades, selected buddy, and settings have been carried into this trip.</p>':''}`;
  }else if(panel==='help'){
-  title='A little guide to a big trip.';html=`<p class="panel-intro">Thirty trails, five worlds, and plenty of detours. Take one chapter a day or follow your curiosity. All four adventure buddies and all the mini-games are ready from the beginning.</p>${inputMode==='touch'?'<div class="instructions"><div class="instruction"><h3>Thumbs on the trail.</h3><p>Slide your left thumb across the pad to run either way without lifting. Tap <strong>JUMP</strong>, or anywhere on the trail, to jump. Hold for height and tap again in the air for a double jump. Drag down to drop fast. Chests open when you reach them. Bounce on treat balloons to cross the sky, and let a rising vent lift you out of a gap.</p></div><div class="instruction"><h3>Swipe to scout.</h3><p>In Trail Scout, swipe or use the round pad to step. Tap a tile next to your buddy to step there. Turn your phone sideways any time for a wider view.</p></div><div class="instruction"><h3>Drag to drive.</h3><p>In RV Rally, drag left or right anywhere on the road, or slide the pad. Hold <strong>BRAKE</strong> to slow down. Tilt steering is in the settings below.</p></div></div>':''}<div class="instructions"><div class="instruction"><h3>Run. Jump. Explore.</h3><p><kbd>← →</kbd> or <kbd>A D</kbd> move freely. <kbd>Space</kbd>, <kbd>↑</kbd>, or <kbd>W</kbd> jumps. Hold for height; press again for a double jump. Bounce on the snack bandits, hit blocks from below, and use <kbd>E</kbd> to open chests. Two high-path keys open the RV goal. Checkpoints restore a heart and save your place.</p></div><div class="instruction"><h3>Follow your nose.</h3><p>Trail Scout is a top-down treasure adventure. Move in four directions with the arrow keys, <kbd>W A S D</kbd>, or the touch pad. Press <kbd>E</kbd> beside a chest or neighbor. Find three treasures, a key, and the parcel; deliver it before returning to the RV. <kbd>H</kbd> shows a trail hint; <kbd>X</kbd> uses your character’s power. There is no countdown.</p></div><div class="instruction"><h3>Take the wheel.</h3><p>RV Rally is a 60-second 3D driving challenge. Use <kbd>← →</kbd> or <kbd>A D</kbd> to steer. Hold <kbd>↓</kbd> or <kbd>S</kbd> to brake. Collect snacks along the safe route, avoid cones and crates, and use <kbd>X</kbd> to boost when charged.</p></div><div class="instruction"><h3>A quick camp break.</h3><p>Catch falling treats for 45 seconds in Snack Storm. Move with arrows, touch buttons, or a drag across the field. In Camp Pairs, flip cards to find matches. Consecutive matches multiply your points. Both modes earn treats and quest progress.</p></div></div><h3 class="panel-heading">Stack the good stuff.</h3><div class="stack-example"><span>5× chain</span><b>×</b><span>2× frenzy</span><b>×</b><span>2× Gold Rush</span><b>×</b><span>1.5× Griffin power</span><strong>30× points</strong></div><p class="panel-intro">Collect treats in a row to build a chain. Gold extends your double-point rush. Long chains start a frenzy. Stack Griffin’s power on top, then equip charms to keep the good things going longer.</p><div class="instructions">${PLAYABLE_IDS.map(id=>`<div class="instruction"><h3>${CHARACTERS[id].name}</h3><p><strong>${ABILITIES[id].name}</strong><br>${esc(ABILITIES[id].detail)}</p></div>`).join('')}</div><div class="settings">${[['sound','Music & sound','Original road-trip tunes and satisfying snack chimes. On iPhone, the ring switch also needs to be on.'],['assist','Easygoing mode','Extra hearts and a gentler pace. Applies on your next outing.'],['reducedMotion','Reduced motion','Steady scenery, quieter effects, and fewer moving decorations.']].map(([id,title,desc])=>`<label class="setting"><span><strong>${title}</strong><small>${desc}</small></span><input type="checkbox" data-setting="${id}" ${s.settings[id]?'checked':''}></label>`).join('')}${[['haptics','Touch feedback','A little tap for jumps, bounces, and big stacks, on phones that support it.'],['tilt','Tilt to steer','Steer the RV by tilting your phone. Dragging and the steering pad still work.']].map(([id,title,desc])=>`<label class="setting"><span><strong>${title}</strong><small>${desc}</small></span><input type="checkbox" data-pref="${id}" ${prefs[id]?'checked':''}></label>`).join('')}</div><p class="key-help"><kbd>P</kbd> or <kbd>Esc</kbd> pauses. Progress in platform levels saves when you pause, reach a checkpoint, or return to camp. Complete any four different trails to open the next world. Three medals per level: finish, collect all three gold, and finish without a hit or within the target time. A remix reshuffles the platform route for a fresh challenge.</p>`;
+  title='A little guide to a big trip.';html=`<p class="panel-intro">Thirty trails, five worlds, and plenty of detours. Take one chapter a day or follow your curiosity. All four adventure buddies and all the mini-games are ready from the beginning.</p>${inputMode==='touch'?'<div class="instructions"><div class="instruction"><h3>The whole screen is your controller.</h3><p>No buttons to hunt for. On the trail, <strong>slide your left thumb</strong> to run either way, and <strong>tap the right side</strong> to jump. Hold for height and tap again in the air for a double jump. <strong>Flick up</strong> with your left thumb for your power, and pull down to drop fast. Chests open and signs speak when you reach them.</p></div><div class="instruction"><h3>Swipe to scout.</h3><p>In Trail Scout, swipe to step and keep dragging to keep walking, or tap a tile to go there. Hold your finger still for a hint. Tap with two fingers for your power.</p></div><div class="instruction"><h3>Drag to drive. Drag to catch.</h3><p>In RV Rally, drag left or right anywhere to steer, pull back to brake, and flick up to boost. In Snack Storm, drag to move and flick up for your power. The glowing power meter at the top can always be tapped as well. Tilt steering is in the settings below.</p></div></div>':''}<div class="instructions"><div class="instruction"><h3>Run. Jump. Explore.</h3><p><kbd>← →</kbd> or <kbd>A D</kbd> move freely. <kbd>Space</kbd>, <kbd>↑</kbd>, or <kbd>W</kbd> jumps. Hold for height; press again for a double jump. Bounce on the snack bandits, hit blocks from below, and use <kbd>E</kbd> to open chests. Two high-path keys open the RV goal. Checkpoints restore a heart and save your place.</p></div><div class="instruction"><h3>Follow your nose.</h3><p>Trail Scout is a top-down treasure adventure. Move in four directions with the arrow keys, <kbd>W A S D</kbd>, or the touch pad. Press <kbd>E</kbd> beside a chest or neighbor. Find three treasures, a key, and the parcel; deliver it before returning to the RV. <kbd>H</kbd> shows a trail hint; <kbd>X</kbd> uses your character’s power. There is no countdown.</p></div><div class="instruction"><h3>Take the wheel.</h3><p>RV Rally is a 60-second 3D driving challenge. Use <kbd>← →</kbd> or <kbd>A D</kbd> to steer. Hold <kbd>↓</kbd> or <kbd>S</kbd> to brake. Collect snacks along the safe route, avoid cones and crates, and use <kbd>X</kbd> to boost when charged.</p></div><div class="instruction"><h3>A quick camp break.</h3><p>Catch falling treats for 45 seconds in Snack Storm. Move with arrows, touch buttons, or a drag across the field. In Camp Pairs, flip cards to find matches. Consecutive matches multiply your points. Both modes earn treats and quest progress.</p></div></div><h3 class="panel-heading">Stack the good stuff.</h3><div class="stack-example"><span>5× chain</span><b>×</b><span>2× frenzy</span><b>×</b><span>2× Gold Rush</span><b>×</b><span>1.5× Griffin power</span><strong>30× points</strong></div><p class="panel-intro">Collect treats in a row to build a chain. Gold extends your double-point rush. Long chains start a frenzy. Stack Griffin’s power on top, then equip charms to keep the good things going longer.</p><div class="instructions">${PLAYABLE_IDS.map(id=>`<div class="instruction"><h3>${CHARACTERS[id].name}</h3><p><strong>${ABILITIES[id].name}</strong><br>${esc(ABILITIES[id].detail)}</p></div>`).join('')}</div><div class="settings">${[['sound','Music & sound','Original road-trip tunes and satisfying snack chimes. On iPhone, the ring switch also needs to be on.'],['assist','Easygoing mode','Extra hearts and a gentler pace. Applies on your next outing.'],['reducedMotion','Reduced motion','Steady scenery, quieter effects, and fewer moving decorations.']].map(([id,title,desc])=>`<label class="setting"><span><strong>${title}</strong><small>${desc}</small></span><input type="checkbox" data-setting="${id}" ${s.settings[id]?'checked':''}></label>`).join('')}${[['haptics','Touch feedback','A little tap for jumps, bounces, and big stacks, on phones that support it.'],['tilt','Tilt to steer','Steer the RV by tilting your phone. Dragging and the steering pad still work.']].map(([id,title,desc])=>`<label class="setting"><span><strong>${title}</strong><small>${desc}</small></span><input type="checkbox" data-pref="${id}" ${prefs[id]?'checked':''}></label>`).join('')}</div><p class="key-help"><kbd>P</kbd> or <kbd>Esc</kbd> pauses. Progress in platform levels saves when you pause, reach a checkpoint, or return to camp. Complete any four different trails to open the next world. Three medals per level: finish, collect all three gold, and finish without a hit or within the target time. A remix reshuffles the platform route for a fresh challenge.</p>`;
  }else if(panel==='install'){
   title='Ready for the road.';html=`<img class="install-image" src="/assets/griffin-icon.png?v=20" alt="Griffin, your adventure buddy"><p class="panel-intro">Add Doodle Onward to your Home Screen for a full-screen adventure. Let the game finish loading while you’re connected, then the game and every activity can reopen offline.</p>${deferredInstall?'<button class="primary" data-install-now>Install Doodle Onward</button>':'<ol class="install-steps"><li>On iPhone or iPad, open this page in Safari.</li><li>Tap Share, then <strong>Add to Home Screen</strong>.</li><li>On Android or desktop, use your browser’s <strong>Install app</strong> option.</li></ol>'}<p class="record-note">Your save belongs to this browser and device. Download a backup from the passport before moving to a new device. After installing, open the game once and try an adventure before traveling offline.</p><div class="export-row"><button class="secondary" data-panel="passport">Open your passport</button></div>`;
  }else if(panel==='share'){
@@ -218,34 +236,37 @@ function closePanel(){if($('panel-dialog').open)$('panel-dialog').close();active
 function goMap(){if(screen!=='home')home();closePanel();$('world-map').scrollIntoView({behavior:reduced()?'instant':'smooth',block:'start'});}
 async function share(){const text='Thirty little adventures, top-down treasure trails, 3D rallies, and big snack stacks. Doodle Onward with Griffin and friends!';if(navigator.share){try{await navigator.share({title:'Doodle Onward',text,url:location.origin+'/'});return;}catch(e){if(e.name==='AbortError')return;}}openPanel('share');}
 function inputJump(){if(screen==='run'&&currentConfig.mode==='platform'){if(run.jump())haptics.pulse('tap');}}
-function inputPower(){if(screen!=='run')return;gestureAudio();if(!run.power?.())toast('Collect treats to fill your power meter.');}
-function inputHint(){if(screen==='run'&&currentConfig.mode==='scout'&&!run.hint())toast('Your three trail hints are used. Follow your nose from here.');}
+function inputPower(){if(screen!=='run'||currentConfig.mode==='memory')return;gestureAudio();if(!run.power?.())toast('Collect treats to fill your power meter.');}
+function inputHint(){if(screen!=='run'||currentConfig.mode!=='scout')return;if(run.hint())haptics.pulse('medium');else toast('Your three trail hints are used. Follow your nose from here.');}
 function inputInteract(){if(screen!=='run')return;const worked=run.interact?.();if(!worked&&!run.interaction)callout('Get a little closer to a chest, sign, or neighbor.',1500);}
 function updateMovement(){
  if(screen!=='run'||currentConfig.mode==='memory')return;const m=currentConfig.mode,k=key=>held.has(key)?1:0;
  const dx=Math.sign(k('right')-k('left')+controls.dir.x),dy=Math.sign(k('down')-k('up')+controls.dir.y);
  if(m==='scout')run.move(dx,dy);
- else if(m==='rally'){const analog=controls.steering;run.move(dx||(analog??0));run.brake(dy>0||braking);}
+ else if(m==='rally'){const analog=controls.steering;run.move(dx||(analog??0));run.brake(k('down')>0||controls.braking);}
  else run.move?.(dx);
 }
-// A tap on the Trail Scout map steps to a neighbouring tile or uses what is beside the buddy.
+// A tap on the Trail Scout map walks to that tile, steps to a neighbour, or uses what is beside the buddy.
 function scoutTap(x,y){
  if(run.walkTo&&renderer.scoutCellAt){const cell=renderer.scoutCellAt(x,y);if(cell)run.walkTo(cell.x,cell.y);return;}
  const l=renderer.scoutLayout;if(!l)return;const cx=Math.floor((x-l.left)/l.cell),cy=Math.floor((y-l.top)/l.cell),dx=cx-run.player.x,dy=cy-run.player.y;
  if(Math.abs(dx)+Math.abs(dy)===1)run.step?.(dx,dy);else if(Math.abs(dx)+Math.abs(dy)<=2)run.interact();
 }
-const controls=new Controls({get:$,canvas:$('game'),rallyCanvas:$('rally-canvas'),on:{
- gesture:()=>{gestureAudio();if(inputMode!=='touch'&&coarsePointer.matches)setInputMode('touch');},
- direction:()=>{if(screen==='run'&&currentConfig.mode==='scout'&&(controls.dir.x||controls.dir.y))haptics.pulse('tap');updateMovement();},
+// The play field is the controller: see controls.js for the gestures.
+const controls=new Controls({canvas:$('game'),rallyCanvas:$('rally-canvas'),on:{
+ gesture:()=>{gestureAudio();},
+ direction:(x,y)=>{if(screen==='run'&&currentConfig.mode==='scout'&&(x||y))haptics.pulse('tap');updateMovement();},
  jump:inputJump,releaseJump:()=>run?.releaseJump?.(),drop:()=>{if(screen==='run'&&currentConfig.mode==='platform')run.drop?.();},
- power:inputPower,hint:inputHint,interact:inputInteract,
- brake:on=>{braking=on;updateMovement();},steer:()=>updateMovement(),
+ power:inputPower,hint:inputHint,
+ brake:()=>updateMovement(),steer:()=>updateMovement(),
  fieldX:fraction=>{if(fraction!==null&&screen==='run'&&currentConfig.mode==='snack')run.moveTo(fraction*1120);},
- tap:(x,y)=>{if(screen==='run'&&currentConfig.mode==='scout')scoutTap(x,y);},
- swipe:(dx,dy)=>{if(screen==='run'&&currentConfig.mode==='scout'){run.step?.(dx,dy);haptics.pulse('tap');}}
+ tap:(x,y)=>{if(screen==='run'&&currentConfig.mode==='scout')scoutTap(x,y);}
 }});
-// Keyboard and switch activation of the pad's direction buttons.
-for(const [dir,x,y] of [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]])$(`${dir}-button`).addEventListener('click',e=>{if(e.detail!==0||screen!=='run')return;if(currentConfig.mode==='scout')run.step?.(x,y);else{run.move?.(x);setTimeout(()=>updateMovement(),160);}});
+// Real buttons for keyboard, switch, and screen reader users. Hidden until focused.
+for(const [dir,x,y] of [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]])$(`${dir}-button`).addEventListener('click',()=>{if(screen!=='run')return;const m=currentConfig.mode;if(m==='scout')run.step?.(x,y);else if(m==='rally'&&y>0){run.brake(true);setTimeout(()=>updateMovement(),400);}else if(x){run.move?.(x);setTimeout(()=>updateMovement(),m==='rally'?300:180);}});
+$('jump-button').addEventListener('click',()=>{inputJump();setTimeout(()=>run?.releaseJump?.(),160);});$('power-button').addEventListener('click',inputPower);$('interact-button').addEventListener('click',inputInteract);$('hint-button').addEventListener('click',inputHint);
+// The HUD's glowing power layer and Trail Scout's hint chip can be tapped too.
+$('run-ui').addEventListener('click',e=>{if(e.target.closest('[data-layer=power]'))inputPower();else if(e.target.closest('#hint-chip'))inputHint();});
 const keyDirection={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down'};
 window.addEventListener('keydown',e=>{
  if(e.repeat&&['Escape','KeyP','KeyR'].includes(e.code))return;
@@ -330,9 +351,10 @@ function step(dt){
    const simDt=playing?(juice?juice.step(dt):dt):0;
    if(playing){
     if(mode==='rally')updateMovement();
-    run.update(simDt);
+    run.update(simDt);controls.update(dt);updateCoach(dt);
     if(screen==='run'){
-     if(mode==='platform'&&inputMode==='touch'&&run.interaction?.type==='chest')run.interact();
+     // With no buttons on screen, chests open and signs speak when the buddy reaches them.
+     if(mode==='platform'&&inputMode==='touch'){const near=run.interaction;if(near?.type==='chest')run.interact();else if(near?.type==='sign'&&near.id!==lastSign&&coachTime<=0){lastSign=near.id;callout(near.text,3400);}}
      if(run.runMode==='platform'&&run.time-lastCheckpointTime>12&&run.player.grounded){lastCheckpointTime=run.time;saveCheckpoint();}
      watchStack();
     }
@@ -352,8 +374,8 @@ function step(dt){
   const stack=run&&screen==='run'?(run.totalMultiplier||run.multiplier||1):1;
   audio.update(dt,{speed:1,combo:run?.combo||0,power:screen==='run'&&run?.powerTime>0,running:screen==='run',intensity:Math.min(1,Math.log2(stack)/Math.log2(30)),stack});
  }
- const busy=celebrations.particles?.length>0;
- if(busy||fxBusy){fxContext.setTransform(fxDpr,0,0,fxDpr,0,0);fxContext.clearRect(0,0,fxW,fxH);celebrations.update(dt);celebrations.draw(fxContext,fxW,fxH,{reducedMotion:reduced()});}else celebrations.update(dt);
+ const busy=celebrations.particles?.length>0||controls.busy;
+ if(busy||fxBusy){fxContext.setTransform(fxDpr,0,0,fxDpr,0,0);fxContext.clearRect(0,0,fxW,fxH);celebrations.update(dt);celebrations.draw(fxContext,fxW,fxH,{reducedMotion:reduced()});if(screen==='run')controls.draw(fxContext,{reduced:reduced()});}else celebrations.update(dt);
  fxBusy=busy;
 }
 // Test and tuning handle, only with ?debug in the address.

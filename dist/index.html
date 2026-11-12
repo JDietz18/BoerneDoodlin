@@ -59,11 +59,12 @@
 </div>
 <div class="hud-callout" id="run-callout" role="status" aria-live="polite"></div>
 <div class="hud-tip"><span id="mode-tip"></span><strong id="progress-text">0%</strong></div>
+<div class="coach" id="coach" hidden aria-hidden="true"></div>
+<i class="safe-probe" id="safe-probe" aria-hidden="true"></i>
 <span class="sr-only" id="combo"></span>
 </div>
-<div class="touch" id="play-controls" hidden>
-<div class="pad" id="move-pad" tabindex="0" role="group" aria-label="Movement pad. Slide to change direction."><button id="up-button" class="pad-key pad-up" tabindex="-1" aria-label="Move up"><svg><use href="#i-up"/></svg></button><button id="left-button" class="pad-key pad-left" tabindex="-1" aria-label="Move left"><svg class="point-left"><use href="#i-arrow"/></svg></button><button id="right-button" class="pad-key pad-right" tabindex="-1" aria-label="Move right"><svg><use href="#i-arrow"/></svg></button><button id="down-button" class="pad-key pad-down" tabindex="-1" aria-label="Move down"><svg><use href="#i-down"/></svg></button></div>
-<div class="touch-actions"><button class="tbtn tbtn-hint" id="hint-button" aria-label="Show a trail hint"><strong id="hint-label">HINT · 3</strong></button><button class="tbtn tbtn-brake" id="brake-button" aria-label="Brake"><svg><use href="#i-down"/></svg><strong>BRAKE</strong></button><div class="tbtn-stack"><button class="tbtn tbtn-interact" id="interact-button" hidden aria-label="Interact with a nearby chest, sign, neighbor, or exit"><strong id="interact-label">OPEN</strong></button><button class="tbtn tbtn-power" id="power-button"><svg><use href="#i-bolt"/></svg><strong id="power-label">ZOOMIES</strong></button></div><button class="tbtn tbtn-jump" id="jump-button" aria-label="Jump. Tap again in the air for a double jump."><svg><use href="#i-up"/></svg><strong>JUMP</strong></button></div>
+<div class="assist-controls" id="play-controls" role="group" aria-label="Game actions for keyboard and assistive devices" hidden>
+<button id="left-button">Move left</button><button id="right-button">Move right</button><button id="up-button">Move up</button><button id="down-button">Move down or brake</button><button id="jump-button">Jump</button><button id="power-button">Use power</button><button id="interact-button">Interact</button><button id="hint-button">Trail hint</button>
 </div>
 <div class="overlay pause-layer" id="pause-layer" hidden><div class="pause-card"><canvas id="pause-portrait" width="180" height="180" aria-hidden="true"></canvas><span class="eyebrow">PAWS ON PAUSE</span><h2>A little sniff break.</h2><p id="pause-detail">Your adventure will be right here.</p><button class="primary" id="resume-button">Keep going <svg><use href="#i-play"/></svg></button><div class="button-pair"><button class="secondary" id="restart-button">Start again</button><button class="secondary" id="quit-button">Back to camp</button></div></div></div>
 <div class="overlay result-layer" id="result-layer" hidden><article class="result-card" id="result-content"></article></div>

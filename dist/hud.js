@@ -37,16 +37,17 @@ export class Hud {
     const slot=(cls,name,count)=>`<span class="obj ${cls}">${Array.from({length:count},()=>icon(name)).join('')}</span>`;
     const stat=(id,label)=>`<span class="obj stat" id="obj-${id}"><b>0</b><i>${label}</i></span>`;
     e.objectives.innerHTML=mode==='platform'?slot('keys','key',requiredKeys)+slot('golds','star',3)+'<span class="obj secrets" hidden><b>0</b><i>secret</i></span>'
-      :mode==='scout'?slot('golds','star',3)+slot('keys','key',1)+'<span class="obj parcel"><i>Find the parcel</i></span>'
+      :mode==='scout'?slot('golds','star',3)+slot('keys','key',1)+'<span class="obj parcel"><i>Find the parcel</i></span><button class="obj hint-chip" id="hint-chip" aria-label="Show a trail hint"><i>Hint</i><b>3</b></button>'
       :mode==='memory'?stat('pairs','pairs')+stat('misses','misses')
       :stat('treats','treats')+(mode==='rally'?stat('distance','m'):stat('gold','golden'));
-    this.obj={keys:[...e.objectives.querySelectorAll('.keys svg')],golds:[...e.objectives.querySelectorAll('.golds svg')],secrets:e.objectives.querySelector('.secrets'),parcel:e.objectives.querySelector('.parcel i')};
+    this.obj={keys:[...e.objectives.querySelectorAll('.keys svg')],golds:[...e.objectives.querySelectorAll('.golds svg')],secrets:e.objectives.querySelector('.secrets'),parcel:e.objectives.querySelector('.parcel i'),hint:e.objectives.querySelector('.hint-chip')};
     for(const id of ['pairs','misses','treats','distance','gold'])this.obj[id]=e.objectives.querySelector(`#obj-${id} b`);
     const timed=mode==='snack'||mode==='rally';e.timer.hidden=!timed;e.timer.classList.remove('urgent','final');
     const stacked=mode!=='memory';e.stack.hidden=!stacked;
     if(stacked){
-      const layer=(id,label,value)=>`<span class="layer ${id}" data-layer="${id}"><i></i><em>${label}</em><b>${value}</b></span>`;
-      e.stack.innerHTML=`<strong class="stack-total"><b>1</b>×</strong><div class="stack-layers">${layer('chain','CHAIN','×1')}${layer('frenzy','FRENZY','×2')}${layer('gold','GOLD','×2')}${layer('power',characterId==='griffin'?'ZOOMIES':String(powerName||'POWER').split(' ')[0].toUpperCase(),characterId==='griffin'?'×1.5':'')}</div>`;
+      // The power layer doubles as the power button: tap it when it glows.
+      const layer=(id,label,value)=>id==='power'?`<button class="layer ${id}" data-layer="${id}" aria-label="Use ${powerName||'power'}"><i></i><em>${label}</em><b>${value}</b></button>`:`<span class="layer ${id}" data-layer="${id}"><i></i><em>${label}</em><b>${value}</b></span>`;
+      e.stack.innerHTML=`<strong class="stack-total"><b>1</b>×</strong><div class="stack-layers">${layer('chain','CHAIN','×1')}${layer('frenzy','FRENZY','×2')}${layer('gold','GOLD','×2')}${layer('power',mode==='rally'?'BOOST':String(powerName||'POWER').split(' ').at(-1).toUpperCase(),characterId==='griffin'?'×1.5':'GO')}</div>`;
       this.stackNodes={total:e.stack.querySelector('.stack-total'),totalText:e.stack.querySelector('.stack-total b')};
       for(const id of ['chain','frenzy','gold','power']){const node=e.stack.querySelector(`[data-layer=${id}]`);this.stackNodes[id]={node,value:node.querySelector('b')};}
     }
@@ -70,6 +71,7 @@ export class Hud {
       this.set('secrets',this.obj.secrets,run.secrets||0,(node,n)=>{node.hidden=!n;node.querySelector('b').textContent=n;node.querySelector('i').textContent=n===1?'secret':'secrets';if(n)this.pop(node);});
     }else if(m==='scout'){
       const key=run.hasKey||run.keys?1:0;progress=((run.treasures||0)+key+(run.deliveryDone?1:0))/5;fillSlots('golds',this.obj.golds,run.treasures||0);fillSlots('keys',this.obj.keys,key);
+      this.set('hint',this.obj.hint,run.hintsRemaining??3,(node,n)=>{node.querySelector('b').textContent=n;node.classList.toggle('spent',n<=0);});
       this.set('parcel',this.obj.parcel,run.deliveryDone?'Delivered!':run.parcel?'Deliver the parcel':'Find the parcel',(node,v)=>{node.textContent=v;node.parentElement.classList.toggle('on',v==='Delivered!');this.pop(node.parentElement);});
     }else if(m==='memory'){
       progress=(run.pairs||0)/(run.totalPairs||1);this.text('pairs',this.obj.pairs,`${run.pairs||0}/${run.totalPairs||0}`);this.text('misses',this.obj.misses,run.mistakes||0);
@@ -93,6 +95,7 @@ export class Hud {
         this.set(`${id}:fill`,node,Math.round(layer.fill*50),(el,v)=>{el.style.setProperty('--fill',v/50);});
       }
       this.text('chain:value',n.chain.value,`×${s.chain.value}`);
+      this.set('power:ready',n.power.node,!s.power.on&&(run.charge||0)>=100,(el,v)=>{el.classList.toggle('ready',v);if(v)this.pop(el);});
       this.set('chain:low',n.chain.node,s.chain.on&&s.chain.fill<.35,(el,v)=>el.classList.toggle('low',v));
     }
     // Screen reader friendly summary line (also the desktop combo label).
