@@ -112,3 +112,200 @@ test('following readable treat clusters can survive and build meaningful bonus s
   }
   assert.equal(run.mode,'won');assert.ok(run.treats>=80);assert.ok(run.bestCombo>=24);assert.equal(run.bestMultiplier,30);
 });
+
+// ---- run arc, touch dragging, stack milestones, and the five world twists ----
+import {SNACK_TWISTS,SNACK_TIMING} from '../dist/snack-engine.js';
+const HEAD=82;
+function full(config={},play){
+  const events=[];const run=new SnackStorm({onEvent:e=>events.push({...e,at:run.time})});run.reset(config);run.invincible=999;
+  for(let i=0;i<2760&&run.mode==='running';i++){play?.(run,i);run.update(1/60);}
+  return {run,events};
+}
+const follow=run=>{const target=run.entities.filter(e=>['bone','gold'].includes(e.type)&&!(e.fountain&&e.vy>0)).sort((a,b)=>a.y-b.y)[0];if(target)run.dragTo(target.x);};
+
+test('the run opens with a 3-2-1-GO count on simulation time and still lasts exactly 45 seconds',()=>{
+  const {run,events}=full({seed:7});
+  const count=events.filter(e=>e.type==='countdown');
+  assert.deepEqual(count.map(e=>e.count),[3,2,1,0]);
+  count.forEach((e,i)=>assert.ok(e.at>=SNACK_TIMING.countdown[i]&&e.at<SNACK_TIMING.countdown[i]+.02));
+  // The first treats are already falling during the count and reach the pet just after GO.
+  const first=run.spawnHistory[0];assert.ok(first.spawnedAt<1&&first.arrival>SNACK_TIMING.countdown[3]&&first.arrival<3);
+  assert.equal(run.mode,'won');assert.equal(run.time,45);assert.equal(run.intro,0);
+  const paused=new SnackStorm();paused.reset({seed:7});paused.update(.5);paused.pause();const intro=paused.intro;for(let i=0;i<50;i++)paused.update(.1);assert.equal(paused.intro,intro);
+});
+
+test('the final ten seconds tick once a second, fill out the waves, and end on a golden goodbye',()=>{
+  const {run,events}=full({seed:99});
+  assert.equal(events.filter(e=>e.type==='final-push').length,1);assert.ok(Math.abs(events.find(e=>e.type==='final-push').at-35)<.02);
+  const ticks=events.filter(e=>e.type==='tick');assert.deepEqual(ticks.map(e=>e.remaining),[10,9,8,7,6,5,4,3,2,1]);
+  ticks.forEach(e=>assert.ok(Math.abs(e.at-(45-e.remaining))<.02));
+  const perWave=from=>{const waves=new Map();for(const d of run.spawnHistory)if(['bone','gold'].includes(d.type)&&d.spawnedAt>=from&&d.spawnedAt<from+7)waves.set(d.wave,(waves.get(d.wave)||0)+1);return [...waves.values()];};
+  assert.ok(Math.max(...perWave(20))<=3);assert.ok(Math.min(...perWave(35))>=3);assert.ok(perWave(35).includes(5));
+  const finale=events.find(e=>e.type==='finale');assert.ok(finale&&finale.arrival>44&&finale.arrival<45);
+  const last=run.spawnHistory.filter(d=>d.spawnedAt>=SNACK_TIMING.finale-.02);assert.deepEqual(last.map(d=>d.type),['bone','gold','bone']);
+  assert.equal(events.filter(e=>e.type==='won').length,1);assert.equal(run.time,45);
+});
+
+test('dragging keeps the pet under the finger while a single tap still trots',()=>{
+  const {run}=empty();let finger=560;
+  for(let i=0;i<40;i++){finger+=i<20?60:-75;run.dragTo(finger);run.update(1/60);assert.ok(Math.abs(run.player.x-Math.max(80,Math.min(1040,finger)))<1e-6,`frame ${i}`);}
+  // The controller's existing moveTo stream is recognised as a drag too.
+  const {run:stream}=empty();finger=560;for(let i=0;i<20;i++){finger+=50;stream.moveTo(finger);stream.update(1/60);if(i)assert.ok(Math.abs(stream.player.x-Math.min(1040,finger))<1e-6);}
+  const {run:tap}=empty();tap.moveTo(1000);tap.update(1/60);assert.ok(Math.abs(tap.player.x-575)<.01);
+  assert.equal(tap.dragTo('nope'),false);tap.pause();assert.equal(tap.dragTo(300),false);
+});
+
+test('losing a chain and climbing the stack are announced once each',()=>{
+  const {run,events}=empty();for(let i=0;i<8;i++)catchOne(run);
+  drop(run,'bone',{x:80,y:-33});run.update(1/60);
+  const lost=events.filter(e=>e.type==='chain-lost');assert.equal(lost.length,1);assert.deepEqual([lost[0].combo,lost[0].multiplier,lost[0].reason],[8,2,'miss']);assert.equal(run.chainsLost,1);
+  drop(run,'bone',{x:80,y:-33});run.update(1/60);assert.equal(events.filter(e=>e.type==='chain-lost').length,1,'no chain, nothing to lose');
+  catchOne(run);catchOne(run,'mud');assert.equal(events.filter(e=>e.type==='chain-lost').at(-1).reason,'hit');
+  catchOne(run);step(run,5.5);assert.equal(events.filter(e=>e.type==='chain-lost').at(-1).reason,'timeout');
+  const climb=empty(),r=climb.run;for(let i=0;i<24;i++)catchOne(r);
+  assert.deepEqual(climb.events.filter(e=>e.type==='stack').map(e=>e.level),[10]);
+  catchOne(r,'gold');assert.deepEqual(climb.events.filter(e=>e.type==='stack').map(e=>e.level),[10,20]);
+  r.charge=100;r.power();assert.deepEqual(climb.events.filter(e=>e.type==='stack').map(e=>[e.level,e.totalMultiplier]),[[10,10],[20,20],[30,30]]);
+  catchOne(r);assert.equal(climb.events.filter(e=>e.type==='stack').length,3);
+  for(const type of ['fever-end','gold-rush-end','power-end'])assert.equal(climb.events.filter(e=>e.type===type).length,0);
+  step(r,13);for(const type of ['fever-end','gold-rush-end','power-end'])assert.equal(climb.events.filter(e=>e.type===type).length,1,type);
+});
+
+test('each world plays one seeded twist that ignores the player and keeps every landing honest',()=>{
+  assert.deepEqual([...SNACK_TWISTS],['bounce','sway','gust','comet','bloom']);
+  const schedule=events=>events.filter(e=>['gust','comet','bloom-seed','bloom','finale','countdown','tick','section'].includes(e.type)).map(e=>[e.type,Number(e.at.toFixed(3)),e.x??e.direction??e.count??e.remaining??e.section]);
+  for(let world=0;world<5;world++){
+    const idle=full({seed:6174,worldIndex:world}),busy=full({seed:6174,worldIndex:world},(run,i)=>{follow(run);if(i%500===0){run.charge=100;run.power();}});
+    assert.equal(idle.run.twist,SNACK_TWISTS[world]);assert.equal(idle.run.mode,'won');assert.equal(busy.run.mode,'won');
+    assert.deepEqual(idle.run.spawnHistory,busy.run.spawnHistory,`world ${world}: same course for an idle and a busy player`);
+    assert.deepEqual(schedule(idle.events),schedule(busy.events),`world ${world}: same weather for an idle and a busy player`);
+    const other=full({seed:7182,worldIndex:world});assert.notDeepEqual(other.run.spawnHistory,idle.run.spawnHistory);
+    const drops=idle.run.spawnHistory;
+    for(const a of drops)if(a.type==='mud')for(const b of drops)if(b.type!=='mud'&&Math.abs(a.arrival-b.arrival)<=.7)assert.ok(Math.abs(a.x-b.x)>=180,`world ${world}: mud lands clear of every pickup`);
+  }
+  // The base rain is the same storm in every world; only the weather differs.
+  const rain=world=>full({seed:321,worldIndex:world}).run.spawnHistory.filter(d=>!d.comet&&d.type!=='bloom'&&d.type!=='mud').map(d=>[d.type,d.x,d.y,d.spawnedAt]);
+  assert.deepEqual(rain(1),rain(2));assert.deepEqual(rain(1),rain(3));
+});
+
+test('anything a twist pushes sideways is back on its landing column by the time it can be caught',()=>{
+  for(const world of [1,2,3]){
+    const run=new SnackStorm();run.reset({seed:17,worldIndex:world});run.invincible=999;run.player.x=80;run._targetX=null;
+    const columns=new Map(run.spawnHistory.map(d=>[d.id,d.x]));let drifted=0,checked=0;
+    for(let i=0;i<2760&&run.mode==='running';i++){
+      run.update(1/60);for(const d of run.spawnHistory)columns.set(d.id,d.x);
+      for(const e of run.entities){
+        if(!columns.has(e.id)||e.fountain)continue;const column=columns.get(e.id);
+        if(e.y>HEAD+60&&Math.abs(e.x-column)>12)drifted++;
+        if(e.y<=HEAD){checked++;assert.ok(Math.abs(e.x-column)<1e-6,`world ${world}: ${e.type} is on its column at head height`);}
+      }
+    }
+    assert.ok(checked>200);assert.ok(drifted>100,`world ${world}: the twist visibly moves things in the air`);
+    if(world===2)assert.equal(run.wind,0,'the last gust has blown itself out');
+  }
+});
+
+test('Rogue River tennis balls hop once for a second chance, then count as a miss',()=>{
+  const {run,events}=full({seed:61,worldIndex:0});
+  const bouncy=run.spawnHistory.filter(d=>d.bouncy);assert.ok(bouncy.length>=10&&bouncy.every(d=>d.type==='bone'));
+  assert.equal(events.filter(e=>e.type==='bounce').length,run.bounces);assert.ok(run.bounces>=8);assert.equal(run.result().bounces,run.bounces);
+  // Standing still: a bouncing ball leaves the grass again before it is finally missed.
+  const {run:one,events:log}=empty({worldIndex:0});one.player.x=80;drop(one,'bone',{x:600,baseX:600,y:60,vy:-180,bouncy:true,bounceDir:1});
+  step(one,.4);assert.equal(log.filter(e=>e.type==='bounce').length,1);assert.equal(one.missed,0);assert.ok(one.entities[0].vy>0);
+  step(one,.5);assert.ok(one.entities[0].y>100);assert.ok(one.entities[0].x>600);
+  one.moveTo(one.entities[0].x+40);step(one,1.2);assert.equal(one.treats,1,'caught on the way back down');
+  const {run:two,events:log2}=empty({worldIndex:0});two.player.x=80;for(let i=0;i<7;i++)catchOne(two);
+  drop(two,'bone',{x:600,baseX:600,y:20,vy:-180,bouncy:true,bounceDir:-1});step(two,.3);assert.equal(two.combo,7,'the first landing keeps the chain');
+  step(two,1.6);assert.equal(two.missed,1);assert.equal(two.combo,0);assert.equal(log2.filter(e=>e.type==='miss')[0].bouncy,true);
+  // A bounce never crosses a mud landing.
+  for(const d of bouncy){const land=d.spawnedAt+d.y/-d.vy;for(const m of run.spawnHistory)if(m.type==='mud'&&m.arrival>land-.7&&m.arrival<land+2.2)assert.ok(Math.abs(m.x-d.x)>=135,'mud keeps away from a bounce');}
+});
+
+test('Starlight Mesa comets and Boerne bluebonnet bursts are free bonuses',()=>{
+  const mesa=full({seed:61,worldIndex:3});
+  const comets=mesa.run.spawnHistory.filter(d=>d.comet);assert.ok(comets.length>=3&&comets.length<=5);assert.equal(mesa.run.comets,comets.length);assert.ok(comets.every(d=>d.type==='gold'));
+  const count=(events,match)=>events.filter(match).length;
+  assert.equal(count(mesa.events,e=>e.type==='fizzle'&&e.kind==='gold')+count(mesa.events,e=>e.type==='collect'&&e.comet),comets.length,'an unclaimed comet just fizzles');
+  assert.ok(count(mesa.events,e=>e.type==='fizzle')>=1);
+  const chased=full({seed:61,worldIndex:3},follow);assert.ok(chased.run.gold>=full({seed:61,worldIndex:0},follow).run.gold+3);
+  assert.ok(chased.events.some(e=>e.type==='collect'&&e.comet));
+  const boerne=full({seed:61,worldIndex:4});
+  assert.ok(boerne.run.blooms>=3&&boerne.run.blooms<=5);assert.equal(boerne.events.filter(e=>e.type==='bloom').length,boerne.run.blooms);
+  assert.equal(count(boerne.events,e=>e.type==='fizzle')+count(boerne.events,e=>e.type==='collect'&&e.bonus),boerne.run.blooms*5,'five treats per burst');
+  assert.ok(count(boerne.events,e=>e.type==='fizzle')>=5);
+  const regular=boerne.run.spawnHistory.filter(d=>d.type==='bone'||d.type==='gold').length;
+  assert.equal(boerne.run.missed+count(boerne.events,e=>e.type==='collect'&&!e.bonus&&['bone','gold'].includes(e.kind)),regular,'burst treats never count as missed');
+  for(const seedDrop of boerne.run.spawnHistory.filter(d=>d.type==='bloom')){const land=seedDrop.spawnedAt+seedDrop.y/-seedDrop.vy;for(const m of boerne.run.spawnHistory)if(m.type==='mud'&&m.arrival>land-.7&&m.arrival<land+2.2)assert.ok(Math.abs(m.x-seedDrop.x)>=280,'mud keeps away from a burst');}
+  // A burst falls back around where it bloomed, never interrupts a chain, and feeds it when caught.
+  const {run,events}=empty({worldIndex:4});for(let i=0;i<3;i++)catchOne(run);
+  run.entities.push({id:900,type:'bloom',x:560,baseX:560,y:30,w:40,h:40,vy:-150,vx:0,taken:false,hit:false});step(run,.3);
+  assert.equal(events.filter(e=>e.type==='bloom').length,1);assert.equal(run.entities.filter(e=>e.fountain).length,5);assert.equal(run.treats,3,'nothing is caught on the way up');
+  step(run,1.8);assert.ok(run.treats>=6);assert.equal(run.missed,0);assert.ok(run.combo>=6);assert.equal(events.filter(e=>e.type==='chain-lost').length,0);
+});
+
+test('worlds, twists, and extra result fields leave the shared contract alone',()=>{
+  const run=new SnackStorm();run.reset({worldIndex:9});assert.equal(run.worldIndex,4);run.reset({worldIndex:-3});assert.equal(run.worldIndex,0);run.reset();assert.equal(run.worldIndex,0);
+  run.reset({seed:5,worldIndex:2});run.worldIndex=4;assert.equal(run.twist,'bloom','the controller may set the world after reset');
+  const result=run.result();for(const key of ['runId','mode','state','stage','regionId','characterId','won','score','treats','distance','time','hits','dodged','nearMisses','bestCombo','bestMultiplier','gold','letters','letterMask','powersUsed','hearts','maxHearts','seed','assist','gear','dailyDate','missed','springs','slides','doubleJumps'])assert.ok(key in result,key);
+  assert.deepEqual([result.bounces,result.blooms,result.comets],[0,0,0]);assert.equal(result.stage,0);
+  // Easygoing mode slows the fall but the golden goodbye still reaches the pet in time.
+  const easy=full({seed:8,assist:true});const finale=easy.events.find(e=>e.type==='finale');assert.ok(finale.arrival>44&&finale.arrival<45);assert.equal(easy.run.time,45);
+});
+
+// ---- the Snack Storm view: layout contract and event handling (no browser needed) ----
+import {Renderer} from '../dist/renderer.js';
+import {Juice} from '../dist/fx.js';
+function view({width=390,height=750,insets={top:96,bottom:150,left:0,right:0},reducedMotion=false}={}){
+  const v=Object.create(Renderer.prototype);
+  Object.assign(v,{width,height,dpr:1,insets,sprites:{},props:null,juice:new Juice(),reducedMotion,_mouth:{x:width/2,y:height/2}});
+  v.juice.reducedMotion=reducedMotion;return v;
+}
+// Enough of a canvas for the sprite painters to run; nothing is ever read back.
+function withFakeCanvas(work){
+  const before=globalThis.document,gradient={addColorStop(){}};
+  const context=()=>new Proxy({},{get:(target,key)=>key in target?target[key]:()=>gradient,set:(target,key,value)=>{target[key]=value;return true;}});
+  globalThis.document={createElement:()=>({width:0,height:0,getContext:context})};
+  try{return work();}finally{if(before===undefined)delete globalThis.document;else globalThis.document=before;}
+}
+
+test('the storm layout keeps the pet above the touch controls and maps a finger straight onto the lane',()=>{
+  for(const [width,height,insets] of [[390,750,{top:96,bottom:150}],[844,390,{top:64,bottom:84}],[844,390,{top:64,bottom:84,left:47,right:47}],[374,569,{}],[1100,572,{top:0,bottom:0}]]){
+    const v=view({width,height,insets}),run=new SnackStorm();run.reset({seed:3});const L=v._stormLayout(run,insets),label=`${width}x${height}`;
+    assert.ok(L.ground<=height-(insets.bottom||0)-20,`${label}: the pet and its meter stand clear of the bottom inset`);
+    assert.ok(L.skyTop>=(insets.top||0)&&L.playH>=180,`${label}: the fall has room under the HUD`);
+    assert.ok(L.ground-L.petH>L.skyTop+L.playH*.3,`${label}: most of the fall is visible above the pet`);
+    const left=L.x0+80*L.sx,right=L.x0+1040*L.sx;
+    assert.ok(left-L.petW/2>=(insets.left||0)-1&&right+L.petW/2<=width-(insets.right||0)+1,`${label}: the pet never hangs off the side`);
+    for(const px of [left,width/2,right])assert.ok(Math.abs(L.x0+v.stormWorldX(px)*L.sx-px)<1e-9,`${label}: stormWorldX inverts the lane mapping`);
+    assert.ok(Math.abs(v.stormWorldX(width/2)-560)<1,`${label}: the middle of the screen is the middle of the lane`);
+    if(!insets.left)assert.ok(Math.abs(L.sx-width/1120)/(width/1120)<.06,`${label}: dragging stays close to 1:1`);
+    assert.ok(L.size>=26&&L.size<=44);
+  }
+  const fresh=view();assert.equal(fresh._L,undefined);assert.ok(Math.abs(fresh.stormWorldX(195)-560)<1e-9,'before the first frame the lane fills the canvas');
+});
+
+test('every Snack Storm event is handled in every world, and reduced motion stays still',()=>{
+  const seen=new Set();
+  for(const reducedMotion of [true,false])withFakeCanvas(()=>{
+    for(let world=0;world<5;world++){
+      const v=view({reducedMotion}),j=v.juice;let popups=0,moved=0;
+      const run=new SnackStorm({onEvent:e=>{seen.add(e.type);v.addEvent(e,run);}});
+      run.reset({seed:61+world,worldIndex:world,characterId:['griffin','kevin','mittens','spike'][world%4]});v._stormLayout(run,v.insets);
+      // hit-stops and slow motion stretch real time, so allow a generous number of frames
+      for(let i=0;i<4200&&run.mode==='running';i++){
+        // chase treats most of the time, stand still now and then, and walk into the odd mud ball
+        const lazy=Math.floor(run.time/3)%4===3,target=run.entities.filter(e=>(lazy?e.type==='mud':['bone','gold','magnet','shield','heart'].includes(e.type))&&!(e.fountain&&e.vy>0)).sort((a,b)=>a.y-b.y)[0];
+        if(target&&(!lazy||run.hearts>1))run.dragTo(target.x);if(run.charge>=100&&run.feverTime>0)run.power();
+        run.update(j.step(1/60));j.update(1/60);popups=Math.max(popups,j.popups.length);
+        moved=Math.max(moved,j.particles.length+j.fliers.length+j.rings.length);
+        assert.ok(j.particles.length<=j.maxParticles&&j.popups.length<=j.maxPopups&&j.fliers.length<=40);
+        if(reducedMotion){assert.equal(j.trauma,0);assert.equal(j._flash,null);assert.equal(j.frozen,false);assert.deepEqual(j.offset,{x:0,y:0,rot:0,zoom:1});}
+      }
+      assert.ok(['won','lost'].includes(run.mode));assert.ok(popups>=2,'catches always answer back with a number');
+      if(reducedMotion)assert.equal(moved,0,'no flying pieces under reduced motion');else assert.ok(moved>20,'the full effects layer is in play');
+    }
+  });
+  for(const type of ['start','countdown','collect','combo','stack','fever','gold-rush','power','charged','dodge','hit','chain-lost','miss','section','final-push','tick','finale','bounce','gust','comet','bloom','fizzle','won'])assert.ok(seen.has(type),`${type} was exercised`);
+  // The legacy trail runner still gets its simple sparks from the same entry point.
+  const old=view();old.particles=[];old.labels=[];old.shake=0;old.addEvent({type:'hit',x:100,y:40},{runMode:'adventure'});assert.ok(old.particles.length>0&&old.shake>0);
+});
