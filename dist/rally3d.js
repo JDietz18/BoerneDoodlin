@@ -1179,6 +1179,7 @@ export class RallyRenderer {
       const size = Math.min(40, at.scale * 1.3);
       if (at.visible && size >= 12) this._text(c, run.worldIndex === 4 ? 'WELCOME TO BOERNE' : 'FINISH', at.x, at.y, size, CSS_GOLD, 1);
     }
+    juice.ceiling = top + 4; // labels stay below the HUD band
     juice.draw(c);
     c.restore();
     for (const d of s.drops) { c.globalAlpha = Math.min(.5, d.life); c.fillStyle = '#d9f6f4'; c.beginPath(); c.ellipse(d.x * w, d.y * h, d.r, d.r * 1.35, 0, 0, TURN); c.fill(); }

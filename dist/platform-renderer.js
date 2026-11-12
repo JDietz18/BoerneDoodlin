@@ -441,6 +441,6 @@ export class AdventureRenderer extends Renderer {
   }
  }
 
- drawScout(run,opts){this.juice.ceiling=-Infinity;drawScout(this,run,opts);}
+ drawScout(run,opts){drawScout(this,run,opts);}
  addScoutEvent(e,run){scoutEvent(this,e,run);}
 }

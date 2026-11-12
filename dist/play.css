@@ -180,10 +180,11 @@ body.playing #arena{touch-action:none}
 /* Trail Scout keeps its corner map clear: messages rise from the bottom instead. */
 #app[data-activity=scout] .hud-callout{top:auto;bottom:calc(60px + var(--safe-b));transform:translate(-50%,6px)}
 #app[data-activity=scout] .hud-callout.visible{transform:translate(-50%,0)}
-/* On its side the trail's messages sit to the right, clear of the buddy's climb. */
+/* On its side, messages sit to the right: clear of the buddy's climb on the
+   trail and of the words the road and the storm draw in the middle. */
 @media (max-height:560px) and (orientation:landscape){
- #app[data-activity=platform] .hud-callout{left:auto;right:calc(12px + var(--safe-r));max-width:min(46%,420px);transform:translate(0,-6px);font-size:14px;padding:7px 12px}
- #app[data-activity=platform] .hud-callout.visible{transform:translate(0,0)}
+ #app:is([data-activity=platform],[data-activity=rally],[data-activity=snack]) .hud-callout{left:auto;right:calc(12px + var(--safe-r));max-width:min(46%,420px);transform:translate(0,-6px);font-size:14px;padding:7px 12px}
+ #app:is([data-activity=platform],[data-activity=rally],[data-activity=snack]) .hud-callout.visible{transform:translate(0,0)}
 }
 /* On its side there is little height to spare, so they run wide and low. */
 @media (max-height:560px) and (orientation:landscape){

@@ -539,7 +539,8 @@ export class Renderer {
     }
   }
   drawStorm(run,{time=0,dt=0,reducedMotion=false,insets}={}){
-    this.juice.ceiling=-Infinity;
+    // Labels stay below the HUD band, and below the headline while one is showing.
+    this.juice.ceiling=Math.max(((insets||this.insets)?.top||0)+4,this._headFloor||0);
     const rm=Boolean(reducedMotion),j=this.juice;this.reducedMotion=rm;j.reducedMotion=rm;
     dt=clamp(Number(dt)||0,0,.1);j.update(dt);
     const c=this.begin(),L=this._stormLayout(run,insets),sv=this._stormState(run),amb=this._ambient(),kit=this._kit(L.size);
@@ -785,6 +786,8 @@ export class Renderer {
       c.restore();
     }
     const b=sv.banner,sub=sv.sub,lineY=L.skyTop+Math.max(L.playH*.2,L.short?64:44); // on a short screen this clears a one-line callout under the HUD
+    // Catch labels wait beneath the headline instead of rising through it.
+    this._headFloor=b||sub?lineY+(sub?(b?Math.max(30,b.size*.5+17):L.short?24:30)+12:(b.size||30)*.55):0;
     if(b||sub){
       c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
       if(b){

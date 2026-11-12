@@ -527,7 +527,7 @@ export function drawScout(view,run,{time=0,dt=0,reducedMotion=false,insets}={}){
   // Screen space: the way-finder and the mini-map sit under the sparks and score popups.
   if(edge)drawEdge(c,edge,L,w,h,s,clock,calm);
   if(L.scroll)drawMini(c,st,run,L,T,w,clock,calm);else st.miniBox=null;
-  enterWorld();j.draw(c);c.restore();
+  j.ceiling=st.top+4-(oy+o.y);enterWorld();j.draw(c);c.restore();
   j.drawOverlay(c,w,h);
   ambient(view,st,T,L,dt,calm);
 }
