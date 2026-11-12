@@ -148,7 +148,7 @@ export class Renderer {
     // Shared game-feel state for whichever activity is on screen, and the
     // screen edges currently covered by the HUD and touch controls (CSS px).
     this.juice=new Juice();this.insets={top:0,right:0,bottom:0,left:0};this.props=null;
-    // Touch-first devices get touch wording in anything drawn on the canvas. The controller may set this.
+    // Touch-first devices get no control wording in anything drawn on the canvas. The controller may set this.
     this.touchFirst=Boolean(globalThis.matchMedia?.('(pointer: coarse)').matches)||(globalThis.navigator?.maxTouchPoints||0)>0;this._mouth={x:0,y:0};
     this.resize();new ResizeObserver(()=>this.resize()).observe(canvas);
   }
@@ -341,7 +341,7 @@ export class Renderer {
   }
   _stormState(run){
     let s=this._sv;
-    if(!s||s.runId!==run.runId)s=this._sv={runId:run.runId,clock:0,storm:0,dust:0,vx:0,lastX:run.player.x,face:1,moving:false,squash:1,squashV:0,hop:0,hopV:0,recoil:0,pip:0,bump:0,lost:0,heat:0,gold:0,zoom:0,push:0,rays:0,windX:0,bloomKick:0,banner:null,bannerNext:null,sub:null,decals:[],tumble:null,stackAt:[-9,-9,-9,-9],maxed:false};
+    if(!s||s.runId!==run.runId)s=this._sv={runId:run.runId,clock:0,storm:0,dust:0,vx:0,lastX:run.player.x,face:1,moving:false,squash:1,squashV:0,hop:0,hopV:0,recoil:0,pip:0,bump:0,lost:0,heat:0,gold:0,zoom:0,push:0,rays:0,windX:0,bloomKick:0,banner:null,bannerNext:null,sub:null,decals:[],tumble:null,stackAt:[-9,-9,-9,-9],lostAt:-9,maxed:false};
     return s;
   }
   _stormBackdrop(L,world){
@@ -390,7 +390,7 @@ export class Renderer {
   }
   _subhead(sv,text,color,life=1.3){sv.sub={text,color,life,max:life};}
   // A popup that never hangs off the side of the screen.
-  _say(text,x,y,options){const half=text.length*(options.size||15)*.3+8;return this.juice.popup(text,clamp(x,half,this._L.w-half),y,options);}
+  _say(text,x,y,options){const half=text.length*(options.size||15)*.36+6;return this.juice.popup(text,clamp(x,half,this._L.w-half),y,options);}
   // Engine events for whichever catching or running view is live. Snack Storm gets
   // the shared effects layer; the legacy trail runner keeps its simple sparks.
   addEvent(event,run){
@@ -443,7 +443,9 @@ export class Renderer {
         break;
       }
       case 'chain-lost':{
-        sv.lost=1;
+        // the engine says why the chain ended; a controller's own echo of the same break carries no reason
+        if(e.reason===undefined&&Math.abs(run.time-sv.lostAt)<.3)break;
+        sv.lost=1;sv.lostAt=run.time;
         if(e.multiplier>1){
           this._say('CHAIN LOST',px,head-22,{color:'#ff9a8a',stroke:'#4a1620e6',size:19,life:1.15,rise:rm?0:24});
           if(!rm){j.burst('debris',px,gy+16,{count:9,colors:[multColor(e.multiplier),'#fff4d7','#ff9a8a'],speed:.8});if(e.reason!=='hit'){j.shake(.22);j.hitStop(.05);j.flash('#35101c',.2,.32);}}
@@ -504,8 +506,13 @@ export class Renderer {
       case 'charged':if(!rm){j.ring(px,mid,{color:'#fff2ab',radius:H*.95,life:.45,width:4});j.burst('spark',px,mid,{count:6});}break;
       case 'heal':if(!rm)j.burst('heart',px,mid,{count:6});break;
       case 'stack':{
-        // 10x, 20x, 30x: each rung of the stack gets a bigger party.
-        const tier=clamp(Math.round(e.tier)||1,1,3),again=run.time-sv.stackAt[tier]<4;sv.stackAt[tier]=run.time;
+        // 10x, 20x, 30x: each rung of the stack gets a bigger party. The engine names the rung (level 10|20|30);
+        // a controller that watches the live stack may announce it too, as {total} from 2x upward. Read the
+        // multiplier itself, leave the small steps to the chain, gold and frenzy lines, and count a rung
+        // announced twice in the same moment as one party.
+        const level=Number(e.level)||Number(e.total)||Number(e.totalMultiplier)||Number(e.tier)||0,tier=level>=30?3:level>=20?2:level>=10?1:0;
+        if(!tier||Math.abs(run.time-sv.stackAt[tier])<.3)break;
+        const again=run.time-sv.stackAt[tier]<4;sv.stackAt[tier]=run.time;
         const text=['','10x STACK!','20x STACK!','30x MAX STACK!'][tier],color=multColor(tier*10);
         if(again)this._subhead(sv,text,color,1.1);else this._headline(sv,text,color,[0,34,40,46][tier],1.4+tier*.25,multStroke(tier*10).slice(0,7));
         if(!rm&&!again){
@@ -764,19 +771,20 @@ export class Renderer {
     if(sv.push>.01){c.globalAlpha=sv.push*.42;c.drawImage(amb.dusk.cv,0,0,w,L.skyTop+L.playH*.75);c.globalAlpha=1;}
     if(time<3&&(run.mode==='running'||run.mode==='paused')){
       // 3, 2, 1, GO! on simulation time, while the first treats are already falling
-      const go=time>=2.25,beat=go?(time-2.25)/.75:(time%.75)/.75,base=Math.min(w*.3,L.playH*(L.short?.3:.36)),y=L.skyTop+L.playH*(L.short?.27:.44);
+      const go=time>=2.25,beat=go?(time-2.25)/.75:(time%.75)/.75,base=Math.min(w*.3,L.playH*(L.short?.3:.36)),y=L.skyTop+L.playH*(L.short?.33:.44);
       const pop=rm?1:beat<.22?.55+ease.outBack(beat/.22)*.45:1,text=go?'GO!':String(3-Math.floor(time/.75));
       c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
       c.globalAlpha=beat>.72?1-(beat-.72)/.28:1;c.font=`900 ${Math.round(base*(go?.74:1)*pop)}px Roadbook,Georgia,serif`;
       c.lineWidth=Math.max(5,base*.09);c.strokeStyle='#0f3537';c.strokeText(text,w/2,y);c.fillStyle=go?'#ffe066':'#fff6dc';c.fillText(text,w/2,y);
       if(!go){
-        c.globalAlpha=1;c.lineWidth=4;c.strokeStyle='#0f3537e6';const y2=y+base*.6+(L.short?4:10);
-        c.font='800 16px system-ui,-apple-system,sans-serif';const how=this.touchFirst?'Drag anywhere to catch':'Arrow keys or drag to catch';c.strokeText(how,w/2,y2);c.fillStyle='#fff6dc';c.fillText(how,w/2,y2);
-        c.font='800 14px system-ui,-apple-system,sans-serif';c.strokeText(TWIST_TIP[world],w/2,y2+22);c.fillStyle='#ffe9a8';c.fillText(TWIST_TIP[world],w/2,y2+22);
+        c.globalAlpha=1;c.lineWidth=4;c.strokeStyle='#0f3537e6';let y2=y+base*.6+(L.short?4:10);const touch=this.touchFirst;
+        // On a touch screen the controller's own coach mark teaches the drag, so the canvas only names this world's twist.
+        if(!touch){c.font='800 16px system-ui,-apple-system,sans-serif';const how='Arrow keys or drag to catch';c.strokeText(how,w/2,y2);c.fillStyle='#fff6dc';c.fillText(how,w/2,y2);y2+=22;}
+        c.font=`800 ${touch?16:14}px system-ui,-apple-system,sans-serif`;c.strokeText(TWIST_TIP[world],w/2,y2);c.fillStyle='#ffe9a8';c.fillText(TWIST_TIP[world],w/2,y2);
       }
       c.restore();
     }
-    const b=sv.banner,sub=sv.sub,lineY=L.skyTop+Math.max(L.playH*.2,L.short?30:44);
+    const b=sv.banner,sub=sv.sub,lineY=L.skyTop+Math.max(L.playH*.2,L.short?64:44); // on a short screen this clears a one-line callout under the HUD
     if(b||sub){
       c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
       if(b){

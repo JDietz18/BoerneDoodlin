@@ -309,3 +309,59 @@ test('every Snack Storm event is handled in every world, and reduced motion stay
   // The legacy trail runner still gets its simple sparks from the same entry point.
   const old=view();old.particles=[];old.labels=[];old.shake=0;old.addEvent({type:'hit',x:100,y:40},{runMode:'adventure'});assert.ok(old.particles.length>0&&old.shake>0);
 });
+
+// ---- frame pacing, and a controller that announces the stack itself ----
+test('the seeded course is identical at any frame pacing, through hit-stops and slow motion',()=>{
+  const noise=seed=>{let n=seed>>>0;return()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;};};
+  const paced=(world,seed,pacing,busy)=>{
+    const weather=[],run=new SnackStorm({onEvent:e=>{if(['gust','comet','bloom-seed','finale'].includes(e.type))weather.push([e.type,run.time,e.x??e.direction,e.arrival??e.duration]);}});
+    run.reset({seed,worldIndex:world});run.invincible=999;const r=noise(seed+pacing);
+    for(let i=0;i<60000&&run.mode==='running';i++){
+      if(busy){follow(run);if(run.charge>=100)run.power();}
+      // steady 60 fps; frozen, slowed, dropped and uneven frames; a 120 Hz screen; a crawl of tiny steps
+      const k=r(),dt=pacing===0?1/60:pacing===1?(k<.1?0:k<.2?.45/60:k<.35?1/30:k<.5?k*.1:1/60-k*.004):pacing===2?1/120:k*.004;
+      run.update(dt);
+    }
+    assert.equal(run.mode,'won');assert.equal(run.time,45);
+    return {course:run.spawnHistory,weather};
+  };
+  for(let world=0;world<5;world++){
+    const steady=paced(world,4242+world,0,false);
+    assert.ok(steady.course.length>150);if(world>=2)assert.ok(steady.weather.length>=3);
+    for(const [pacing,busy] of [[1,true],[2,true],[3,false]]){
+      const other=paced(world,4242+world,pacing,busy);
+      assert.deepEqual(other.course,steady.course,`world ${world}: same course at pacing ${pacing}`);
+      assert.deepEqual(other.weather,steady.weather,`world ${world}: same weather at pacing ${pacing}`);
+    }
+  }
+  // Waves start on their own clock, not on whichever frame happened to notice them.
+  const run=new SnackStorm();run.reset({seed:9});for(let i=0;i<200;i++)run.update(.0031);
+  assert.equal(run.spawnHistory[0].spawnedAt,.45);
+  // Bluebonnet treats are numbered apart from the course, so a burst never renumbers the rain.
+  const boerne=full({seed:61,worldIndex:4}).run;assert.deepEqual(boerne.spawnHistory.map(d=>d.id),boerne.spawnHistory.map((d,i)=>boerne.spawnHistory[0].id+i));
+});
+
+test('the view reads a stack announcement by its multiplier, whoever sends it',()=>{
+  withFakeCanvas(()=>{
+    const v=view(),run=new SnackStorm({onEvent:e=>v.addEvent(e,run)});run.reset({seed:3});v._stormLayout(run,v.insets);run._nextWave=Infinity;run.update(1/60);
+    // the newest headline (a fresh one waits a beat behind the one on screen), and a way to let it play out
+    const banner=()=>(v._sv.bannerNext||v._sv.banner)?.text,sub=()=>v._sv.sub?.text,rings=()=>v.juice.rings.length;
+    const later=()=>{v._sv.banner=v._sv.bannerNext=v._sv.sub=null;for(let i=0;i<120;i++)run.update(1/60);};
+    // A controller that watches the live total announces every tier from 2x up as {total,tier}.
+    v.addEvent({type:'stack',total:2,tier:2},run);v.addEvent({type:'stack',total:5,tier:5},run);
+    assert.equal(banner(),undefined,'small steps belong to the chain, gold and frenzy lines');assert.equal(rings(),0);assert.equal(v.juice.frozen,false);
+    // The engine's own rung, then the controller's echo of it in the same frame: one party.
+    v.addEvent({type:'stack',tier:1,level:10,totalMultiplier:10},run);assert.equal(banner(),'10x STACK!');const after=rings();assert.ok(after>0);
+    v.addEvent({type:'stack',total:10,tier:10},run);assert.equal(banner(),'10x STACK!');assert.equal(sub(),undefined);assert.equal(rings(),after);
+    // Either shape alone is enough, and the top rung is only ever 30x.
+    later();v.addEvent({type:'stack',total:20,tier:20},run);assert.equal(banner(),'20x STACK!');
+    later();v.addEvent({type:'stack',tier:3,level:30,totalMultiplier:30},run);assert.equal(banner(),'30x MAX STACK!');assert.equal(v._sv.maxed,true);
+    // Dropping a rung and climbing straight back is a quieter line, not a second headline.
+    later();v.addEvent({type:'stack',tier:3,level:30,totalMultiplier:30},run);assert.equal(banner(),undefined);assert.equal(sub(),'30x MAX STACK!');
+    // A controller's echo of a broken chain is not a second break.
+    for(let i=0;i<8;i++){run.entities.push({type:'bone',x:run.player.x,y:60,vy:-180,w:34,h:34,hit:false,taken:false});run.update(1/120);}
+    v.juice.clear();run.entities.push({type:'bone',x:run.player.x>500?80:1040,y:-33,vy:-180,w:34,h:34,hit:false,taken:false});run.update(1/60);
+    const popups=v.juice.popups.filter(p=>p.text==='CHAIN LOST').length,bits=v.juice.particles.length;assert.equal(popups,1);
+    v.addEvent({type:'chain-lost',combo:8},run);assert.equal(v.juice.popups.filter(p=>p.text==='CHAIN LOST').length,1);assert.equal(v.juice.particles.length,bits);
+  });
+});
