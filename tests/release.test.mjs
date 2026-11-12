@@ -139,12 +139,12 @@ test('the play field is the controller: thumbs are tracked alone and every gestu
 
   // RV Rally: drag steers, pulling back brakes, a second finger brakes, a flick boosts.
   controls.configure('rally'); controls.active = true; calls.length = 0; clock = 9000;
-  road.fire('pointerdown', { pointerId: 1, clientX: 200, clientY: 400 }); road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 400 }); assert.equal(controls.steering, .5);
+  road.fire('pointerdown', { pointerId: 1, clientX: 200, clientY: 400 }); road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 400 }); assert.equal(controls.steering, .5); assert.deepEqual(controls.drag, { dx: 40 });
   road.fire('pointermove', { pointerId: 1, clientX: 900, clientY: 400 }); assert.equal(controls.steering, 1);
   road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 460 }); assert.equal(controls.braking, true); road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 405 }); assert.equal(controls.braking, false);
   road.fire('pointerdown', { pointerId: 2, clientX: 60, clientY: 500 }); assert.equal(controls.braking, true); road.fire('pointerup', { pointerId: 2 }); assert.equal(controls.braking, false);
   clock = 9500; road.fire('pointermove', { pointerId: 1, clientX: 240, clientY: 405 }); clock = 9560; road.fire('pointermove', { pointerId: 1, clientX: 242, clientY: 340 }); assert.ok(names().includes('power'));
-  road.fire('pointerup', { pointerId: 1 }); assert.equal(controls.steering, null);
+  road.fire('pointerup', { pointerId: 1 }); assert.equal(controls.steering, null); assert.equal(controls.drag, null);
 
   // Snack Storm: the buddy follows the finger; a flick is the power.
   controls.configure('snack'); controls.active = true; calls.length = 0;

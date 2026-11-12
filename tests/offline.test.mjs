@@ -20,7 +20,10 @@ function workerHarness() {
       if(!stores.has(name)) stores.set(name,new Map());
       const entries=stores.get(name);
       return {
-        async addAll(paths) {
+        async addAll(requests) {
+          // The worker asks for each file with cache:'reload' so updates bypass the HTTP cache.
+          for(const request of requests)assert.equal(request.cache,'reload',`Precache request for ${request.url} skips the HTTP cache`);
+          const paths=requests.map(request=>request.url);
           state.installed=[...paths];
           for(const path of paths) {
             const pathname=new URL(path,ORIGIN).pathname;
@@ -42,8 +45,9 @@ function workerHarness() {
     skipWaiting:async()=>{state.skipped++;},
     clients:{claim:async()=>{state.claimed++;}}
   };
+  class Request {constructor(url,init={}){this.url=url;this.cache=init.cache;}}
   vm.runInNewContext(workerSource,{
-    self,caches,URL,Response,
+    self,caches,URL,Response,Request,
     fetch:async request=>{
       const url=typeof request==='string'?request:request.url;
       network.push(url);

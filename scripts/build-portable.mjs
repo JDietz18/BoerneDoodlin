@@ -26,7 +26,7 @@ const dist = path.join(root, 'dist');
 export function bundleFiles() {
   let core = [];
   const self = { location: { origin: 'https://example.invalid', href: 'https://example.invalid/sw.js' }, addEventListener() {} };
-  const context = { self, URL, caches: {}, Response: class {}, fetch() {} };
+  const context = { self, URL, caches: {}, Response: class {}, Request: class {}, fetch() {} };
   vm.runInNewContext(`${fs.readFileSync(path.join(dist, 'sw.js'), 'utf8')}\nself.__core = CORE;`, context);
   core = [...self.__core];
   return [...new Set(core.map(entry => entry.split('?')[0]).filter(entry => entry !== '/').map(entry => entry.replace(/^\//, '')))];

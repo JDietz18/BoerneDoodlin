@@ -6,7 +6,8 @@
 //   Platform  left half: slide to run, flick up for power, pull down to drop
 //             right half: tap to jump (hold for height, tap again in the air)
 //   Scout     swipe or drag to walk, tap a tile, hold for a hint, two fingers for power
-//   Rally     drag to steer, pull back to brake, flick up to boost
+//   Rally     drag to steer (`drag.dx` is the finger's travel in px, `steering`
+//             the same as -1..1), pull back or a second finger to brake, flick up to boost
 //   Snack     drag to catch, flick up for power
 
 const TAU=Math.PI*2;
@@ -16,7 +17,7 @@ const DEAD=10,TRAIL=22,STEP=26,FLICK=48,PULL=46,HOLD=.55;
 export class Controls {
   constructor({canvas,rallyCanvas,on,now=()=>globalThis.performance?.now?.()??Date.now()}){
     this.on=on;this.canvas=canvas;this.rallyCanvas=rallyCanvas;this._now=now;this.mode='';this.active=false;this.touch=false;
-    this.dir={x:0,y:0};this.pointers=new Map();this.ripples=[];this.braking=false;this._steer=null;this.tilt=null;this.used={move:false,action:false,power:false};
+    this.dir={x:0,y:0};this.pointers=new Map();this.ripples=[];this.braking=false;this._steer=null;this.drag=null;this.tilt=null;this.used={move:false,action:false,power:false};
     this._bindField(canvas);this._bindField(rallyCanvas);
   }
   configure(mode){this.mode=mode;this.clear();this.used={move:false,action:false,power:false};}
@@ -24,7 +25,7 @@ export class Controls {
 
   // Releases everything. Called on pause, blur, and screen changes.
   clear(){
-    this.pointers.clear();this.dir.x=0;this.dir.y=0;this._steer=null;this.braking=false;this.ripples.length=0;
+    this.pointers.clear();this.dir.x=0;this.dir.y=0;this._steer=null;this.drag=null;this.braking=false;this.ripples.length=0;
     if(this.tilt)this.tilt.value=0;
   }
 
@@ -50,7 +51,7 @@ export class Controls {
         else p.role='move';
       }else if(m==='rally'){
         if(others){p.role='brake';this.braking=true;this.on.brake?.(true);}
-        else{p.role='move';this._steer=0;this.on.steer?.(0);}
+        else{p.role='move';this._steer=0;this.drag={dx:0};this.on.steerStart?.();this.on.steer?.(0);}
       }else if(m==='snack'){
         if(others)this._power(p);
         else{p.role='move';this.used.move=true;this.on.fieldX?.(clamp(at.x/at.w,0,1));}
@@ -80,7 +81,7 @@ export class Controls {
           const d=Math.hypot(dx,dy);p.ax=at.x-dx/d*STEP;p.ay=at.y-dy/d*STEP;p.walked=true;
         }
       }else if(m==='rally'&&p.role==='move'){
-        this._steer=clamp((at.x-p.x0)/Math.max(60,at.w*.2),-1,1);this.used.move=true;this.on.steer?.(this._steer);
+        this._steer=clamp((at.x-p.x0)/Math.max(60,at.w*.2),-1,1);this.drag={dx:at.x-p.x0};this.used.move=true;this.on.steer?.(this._steer);
         const pull=at.y-p.y0>PULL;if(pull!==p.pulled){p.pulled=pull;this.braking=pull||!!this._role('brake');this.on.brake?.(this.braking);}
         if(flick&&!p.spent){this._power(p);p.refT=t;p.refY=at.y;}
       }else if(m==='snack'&&p.role==='move'){
@@ -97,7 +98,7 @@ export class Controls {
       }else if(m==='scout'){
         if(p.role==='move'){this._setDirection(0,0);if(lifted&&!p.moved&&!p.spent&&!p.walked&&!p.hinted)this.on.tap?.(p.x,p.y);}
       }else if(m==='rally'){
-        if(p.role==='move'){this._steer=null;this.on.steer?.(null);}
+        if(p.role==='move'){this._steer=null;this.drag=null;this.on.steer?.(null);}
         this.braking=!!this._role('brake')||[...this.pointers.values()].some(o=>o.pulled);this.on.brake?.(this.braking);
       }else if(m==='snack'&&p.role==='move')this.on.fieldX?.(null);
     };

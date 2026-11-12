@@ -19,7 +19,8 @@ const ALLOWED=new Set(CORE.map(path=>new URL(path,self.location.origin).href));
 
 self.addEventListener('install',event=>{
   // A failed asset download leaves the previous complete game active.
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));
+  // 'reload' skips the browser's HTTP cache, so an update can never be built from stale files.
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE.map(path=>new Request(path,{cache:'reload'})))));
 });
 
 self.addEventListener('message',event=>{

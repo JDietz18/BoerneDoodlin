@@ -248,3 +248,24 @@ test('recent receipts remain bounded and decimal stack records survive long-runn
   assert.equal(j.completeRun(arcade('snack',0,{runId:'long-409',bestMultiplier:30})).repeat,true);
   assert.equal(j.state.wallet,before);assert.equal(j.state.records.snack.bestMultiplier,7.5);assert.equal(j.state.counters.bestMultiplier,7.5);
 });
+
+test('a daily or remix win leaves the ordinary checkpoint of the same level alone',()=>{
+  for(let day=0;day<900;day++){
+    const when=new Date(2026,10,1+day,12),date=`${when.getFullYear()}-${String(when.getMonth()+1).padStart(2,'0')}-${String(when.getDate()).padStart(2,'0')}`,j=new Journey(),daily=j.getDailyChallenge(date);
+    if(daily.mode!=='platform'||!j.state.levels[daily.levelId].unlocked)continue;
+    assert.equal(j.saveCheckpoint(daily.levelId,{version:1,kind:'platform',config:{levelId:daily.levelId}}),true);
+    const report=j.completeRun({runId:`daily-${date}`,mode:'platform',levelId:daily.levelId,won:true,score:900,treats:10,gold:3,hits:0,time:60,seed:daily.seed,dailyDate:date,remix:true});
+    assert.equal(report.ok,true);assert.equal(report.dailyBonus,80);
+    assert.ok(j.state.checkpoints[daily.levelId],'the ordinary saved spot is still there after a daily win');
+    return;
+  }
+  assert.fail('no unlocked platform daily found in the sampled dates');
+});
+
+test('a remix win keeps the ordinary checkpoint and an ordinary win still clears it',()=>{
+  const j=new Journey();j.saveCheckpoint('river-1',{version:1,kind:'platform',config:{levelId:'river-1'}});
+  j.completeRun({runId:'remix-1',mode:'platform',levelId:'river-1',won:true,score:500,treats:5,gold:1,hits:1,time:90,remix:true});
+  assert.ok(j.state.checkpoints['river-1']);
+  j.completeRun({runId:'plain-1',mode:'platform',levelId:'river-1',won:true,score:500,treats:5,gold:1,hits:1,time:90,remix:false});
+  assert.equal(j.state.checkpoints['river-1'],undefined);
+});

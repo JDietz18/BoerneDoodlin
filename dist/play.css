@@ -227,3 +227,8 @@ body.playing #arena{touch-action:none}
  #app .coach-tip small{display:none}
 }
 #app .toast{font-size:13px;bottom:calc(24px + var(--safe-b));z-index:60}
+
+/* ---- Camp Pairs sits directly under the HUD --------------------------------------- */
+#app[data-activity=memory] .hud::before{height:calc(var(--hud-h,110px) + 6px)}
+#app #memory-board{padding-top:calc(var(--hud-h,110px) + 6px)}
+@media (min-width:761px) and (min-height:561px){#app #memory-board{padding-bottom:18px}}

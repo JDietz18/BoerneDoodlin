@@ -304,7 +304,9 @@ export class Journey {
         firstClear=saved.completed?0:25;saved.completed=true;
         if(run.time>0)saved.bestTime=saved.bestTime===null?run.time:Math.min(saved.bestTime,run.time);
         for(const goal of goals)if(goal.earned&&!saved.awards[goal.id]){saved.awards[goal.id]=true;newMedals++;}
-        saved.medals=Object.values(saved.awards).filter(Boolean).length;this.clearCheckpoint(level.id);
+        saved.medals=Object.values(saved.awards).filter(Boolean).length;
+        // A daily or remix win is a different course: it leaves the saved spot in the ordinary level alone.
+        if(!dailyMatches&&summary.remix!==true)this.clearCheckpoint(level.id);
       }
       syncWorlds(this.state);
       for(const world of this.state.worlds)if(world.completed&&!world.rewarded){world.rewarded=true;worldReward+=50;}

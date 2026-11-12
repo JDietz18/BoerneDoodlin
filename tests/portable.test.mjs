@@ -37,8 +37,8 @@ test('the portable worker precaches the same bundle relative to its own folder',
     const base = 'https://example.test/family/doodle/', installed = [];
     const self = { location: { origin: 'https://example.test', href: `${base}sw.js` }, addEventListener: (type, handler) => { self[type] = handler; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
     const stored = new Map();
-    const caches = { open: async () => ({ addAll: async paths => { installed.push(...paths); for (const p of paths) stored.set(new URL(p, base).href, `cached:${p}`); }, match: async request => { const hit = stored.get(new URL(typeof request === 'string' ? request : request.url, base).href); return hit ? new Response(hit) : undefined; }, put: async () => {} }), keys: async () => [], delete: async () => true };
-    vm.runInNewContext(read(out, 'sw.js'), { self, caches, URL, Response, fetch: async () => { throw new Error('offline'); } });
+    const caches = { open: async () => ({ addAll: async requests => { const paths = requests.map(request => request.url); installed.push(...paths); for (const p of paths) stored.set(new URL(p, base).href, `cached:${p}`); }, match: async request => { const hit = stored.get(new URL(typeof request === 'string' ? request : request.url, base).href); return hit ? new Response(hit) : undefined; }, put: async () => {} }), keys: async () => [], delete: async () => true };
+    vm.runInNewContext(read(out, 'sw.js'), { self, caches, URL, Response, Request: class { constructor(url, init = {}) { this.url = url; this.cache = init.cache; } }, fetch: async () => { throw new Error('offline'); } });
     const waits = []; self.install({ waitUntil: promise => waits.push(promise) }); await Promise.all(waits);
     assert.deepEqual([...installed].sort(), [...new Set(['./', ...bundleFiles().map((file, i) => installed.find(entry => entry.split('?')[0] === file) || file)])].sort());
     for (const entry of installed) assert.ok(!entry.startsWith('/'), `${entry} is relative`);
