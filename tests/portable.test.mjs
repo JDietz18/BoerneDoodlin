@@ -59,6 +59,13 @@ test('a sandbox preview build drops the worker and manifest, and the production 
     assert.doesNotMatch(read(out, 'index.html'), /rel="manifest"/);
     assert.match(read(out, 'game.js'), /if\(false&&'serviceWorker' in navigator/);
   } finally { fs.rmSync(out, { recursive: true, force: true }); }
+  const preview = temp();
+  try {
+    const files = build(preview, { asFragment: true, lean: true }), page = read(preview, 'index.html');
+    assert.ok(page.startsWith('<title>Doodle Onward</title>')); assert.doesNotMatch(page, /<!doctype|<html[\s>]|<head[\s>]|<body[\s>]|\?v=\d/i);
+    assert.match(page, /<script type="module" src="game\.js"><\/script>/); assert.match(page, /id="app"/); assert.match(page, /Kevin, our forever guide\. Along for every mile\./);
+    for (const file of files.filter(name => name.endsWith('.js'))) assert.doesNotMatch(read(preview, file), /\?v=\d/, `${file} uses plain file names`);
+  } finally { fs.rmSync(preview, { recursive: true, force: true }); }
   const after = fs.readFileSync(new URL('index.html', dist), 'utf8') + fs.readFileSync(new URL('sw.js', dist), 'utf8') + fs.readFileSync(new URL('manifest.webmanifest', dist), 'utf8');
   assert.equal(after, before);
   const manifest = JSON.parse(fs.readFileSync(new URL('manifest.webmanifest', dist), 'utf8'));

@@ -9,8 +9,10 @@
 //
 //   node scripts/build-portable.mjs [outDir] [--no-sw] [--lean]
 //
-//   --no-sw  leave out the service worker and manifest (for sandboxed previews)
-//   --lean   skip files that only the retired campaign used
+//   --no-sw     leave out the service worker and manifest (for sandboxed previews)
+//   --lean      skip files that only the retired campaign used
+//   --fragment  write index.html as a body fragment with plain file names, for
+//               preview hosts that supply their own page shell (implies --no-sw)
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -61,7 +63,19 @@ export function rewrite(file, text, { serviceWorker = true } = {}) {
   return text;
 }
 
-export function build(outDir, { serviceWorker = true, lean = false } = {}) {
+// Preview hosts that wrap the page themselves want only the title, styles,
+// script, and body content, and serve files by plain name.
+export function fragment(html) {
+  const title = '<title>Doodle Onward</title>';
+  const links = [...html.matchAll(/<link rel="stylesheet"[^>]*>/g)].map(match => match[0]).join('\n');
+  const script = html.match(/<script type="module"[^>]*><\/script>/)?.[0] || '';
+  const body = html.slice(html.indexOf('<body>') + 6, html.lastIndexOf('</body>'));
+  return `${title}\n${links}\n<style>html,body{background:#f6efdf;color:#183d37}</style>\n${script}\n${body.trim()}\n`;
+}
+const unversion = text => text.replace(/\?v=\d+/g, '');
+
+export function build(outDir, { serviceWorker = true, lean = false, asFragment = false } = {}) {
+  if (asFragment) serviceWorker = false;
   const files = bundleFiles().filter(file => !(lean && LEGACY_ONLY.has(file)));
   if (serviceWorker) files.push('sw.js');
   else files.splice(files.indexOf('manifest.webmanifest'), 1);
@@ -72,6 +86,7 @@ export function build(outDir, { serviceWorker = true, lean = false } = {}) {
     if (/\.(html|css|js|webmanifest)$/.test(file)) {
       let text = rewrite(file, fs.readFileSync(from, 'utf8'), { serviceWorker });
       if (file === 'index.html' && !serviceWorker) text = text.replace(/<link rel="manifest"[^>]*>/, '');
+      if (asFragment) text = unversion(file === 'index.html' ? fragment(text) : text);
       if (file === 'sw.js' && lean) for (const legacy of LEGACY_ONLY) text = text.replace(new RegExp(`,?\\s*'${legacy.replace('.', '\\.')}'`), '');
       fs.writeFileSync(to, text);
     } else fs.copyFileSync(from, to);
@@ -81,6 +96,6 @@ export function build(outDir, { serviceWorker = true, lean = false } = {}) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2), outDir = path.resolve(args.find(arg => !arg.startsWith('--')) || path.join(root, 'build', 'portable'));
-  const files = build(outDir, { serviceWorker: !args.includes('--no-sw'), lean: args.includes('--lean') });
+  const files = build(outDir, { serviceWorker: !args.includes('--no-sw'), lean: args.includes('--lean'), asFragment: args.includes('--fragment') });
   console.log(`Portable build: ${files.length} files in ${outDir}`);
 }
