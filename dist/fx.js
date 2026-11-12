@@ -88,11 +88,13 @@ export class Juice {
     this.rings.push({x,y,color,radius:clamp(finite(radius,46),4,600),from:clamp(finite(from,6),0,600),life:clamp(finite(life,.38),.05,2),max:clamp(finite(life,.38),.05,2),width:clamp(finite(width,4),.5,30)});
     if(this.rings.length>this.maxRings)this.rings.splice(0,this.rings.length-this.maxRings);
   }
-  popup(text,x,y,{color='#fff4d7',size=15,life=1,rise=42,weight=900,stroke='#133b3dd9'}={}){
-    if(!text||!Number.isFinite(x)||!Number.isFinite(y))return null;
+  // `follow` (a function returning {x,y}) pins the label to something that
+  // moves, such as the player; x and y are then offsets from that point.
+  popup(text,x,y,{color='#fff4d7',size=15,life=1,rise=42,weight=900,stroke='#133b3dd9',follow=null}={}){
+    if(!text||!Number.isFinite(x)||!Number.isFinite(y))return null;if(typeof follow!=='function')follow=null;
     // Nudge a new label above a fresh neighbour so stacked pickups stay readable.
-    for(const other of this.popups)if(other.max-other.life<.35&&Math.abs(other.x-x)<70&&Math.abs(other.y-y)<size+4)y=other.y-size-5;
-    const max=clamp(finite(life,1),.2,4),popup={text:String(text).slice(0,40),x,y,color,stroke,size:clamp(finite(size,15),6,90),life:max,max,rise:this.reducedMotion?0:finite(rise,42),weight};
+    for(const other of this.popups)if(!other.follow===!follow&&other.max-other.life<.35&&Math.abs(other.x-x)<70&&Math.abs(other.y-y)<size+4)y=other.y-size-5;
+    const max=clamp(finite(life,1),.2,4),popup={text:String(text).slice(0,40),x,y,color,stroke,size:clamp(finite(size,15),6,90),life:max,max,rise:this.reducedMotion?0:finite(rise,42),weight,follow,lift:0};
     this.popups.push(popup);
     if(this.popups.length>this.maxPopups)this.popups.splice(0,this.popups.length-this.maxPopups);
     return popup;
@@ -121,7 +123,7 @@ export class Juice {
     }
     this.particles.length=alive;
     this.rings=this.rings.filter(r=>(r.life-=dt)>0);
-    for(const p of this.popups){p.life-=dt;p.y-=p.rise*dt*clamp(p.life/p.max+.25,0,1);}
+    for(const p of this.popups){p.life-=dt;p.lift+=p.rise*dt*clamp(p.life/p.max+.25,0,1);}
     this.popups=this.popups.filter(p=>p.life>0);
     const flying=[];
     for(const f of this.fliers){f.life+=dt;if(f.life>=f.max)f.onArrive?.();else flying.push(f);}
@@ -154,7 +156,8 @@ export class Juice {
     for(const p of this.popups){
       const age=p.max-p.life,pop=this.reducedMotion?1:age<.14?.55+age/.14*.65:age<.24?1.2-(age-.14)/.1*.2:1;
       c.globalAlpha=clamp(p.life/Math.min(.35,p.max)*1,0,1);c.font=`${p.weight} ${Math.round(p.size*pop)}px system-ui,-apple-system,sans-serif`;
-      c.lineWidth=Math.max(3,p.size*.28);c.strokeStyle=p.stroke;c.strokeText(p.text,p.x,p.y);c.fillStyle=p.color;c.fillText(p.text,p.x,p.y);
+      const base=p.follow?p.follow():null,x=base?finite(base.x)+p.x:p.x,y=(base?finite(base.y)+p.y:p.y)-p.lift;
+      c.lineWidth=Math.max(3,p.size*.28);c.strokeStyle=p.stroke;c.strokeText(p.text,x,y);c.fillStyle=p.color;c.fillText(p.text,x,y);
     }
     c.restore();
   }
