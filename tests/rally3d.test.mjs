@@ -255,13 +255,14 @@ test('countdown, final stretch and finish line ride on simulation time, pause wi
 });
 
 function fullCanvas(width=390,height=750){
-  const calls=[],texts=[];
+  const calls=[],texts=[],images=[];
   const gradient={addColorStop(){}};
-  const context=new Proxy({calls,texts,canvasStyle:null},{
+  const context=new Proxy({calls,texts,images,canvasStyle:null},{
     get(target,name){
       if(name in target)return target[name];
       if(name==='createLinearGradient'||name==='createRadialGradient')return()=>gradient;
       if(name==='fillText')return text=>{calls.push('fillText');texts.push(String(text));};
+      if(name==='drawImage')return image=>{calls.push('drawImage');images.push(image);};
       if(name==='measureText')return()=>({width:10});
       return(...args)=>{calls.push(String(name));};
     },
@@ -343,4 +344,57 @@ test('the software fallback stays inside its triangle budget through the busiest
     }
     assert.ok(most>1500,'the scene is still rich');renderer.destroy();
   }
+});
+
+// A stand-in WebGL context and page, enough to drive the real WebGL path.
+function glCanvas({renderer='Apple GPU',instancing=true,width=390,height=750}={}){
+  const canvas=fullCanvas(width,height),log={draws:0,instances:0,uploads:[],inserted:null};
+  const extensions={
+    WEBGL_debug_renderer_info:{UNMASKED_RENDERER_WEBGL:37446},
+    ANGLE_instanced_arrays:instancing?{vertexAttribDivisorANGLE(){},drawArraysInstancedANGLE(mode,first,count,instances){log.draws++;log.instances+=instances;}}:null
+  };
+  const gl=new Proxy({},{get(target,name){
+    if(typeof name!=='string')return undefined;
+    if(name===name.toUpperCase())return name.length+[...name].reduce((n,ch)=>n+ch.charCodeAt(0),0);
+    if(name==='getExtension')return key=>extensions[key]||null;
+    if(name==='getParameter')return key=>key===37446?renderer:renderer;
+    if(name==='getShaderParameter'||name==='getProgramParameter')return()=>true;
+    if(name==='isContextLost')return()=>false;
+    if(name==='getAttribLocation')return(program,attribute)=>['aPosition','aNormal','aM0','aM1','aM2','aM3','aColor','aMisc'].indexOf(attribute);
+    if(name==='drawArrays')return()=>{log.draws++;log.instances++;};
+    if(name==='bufferData')return(target,data,usage)=>{if(usage===gl.DYNAMIC_DRAW)log.uploads.push(data.length);};
+    if(name.startsWith('create')||name==='getUniformLocation')return()=>({});
+    return()=>{};
+  }});
+  const surface={width:0,height:0,style:{},dataset:{},parentNode:null,setAttribute(){},getContext:kind=>kind==='webgl'?gl:null,addEventListener(){},removeEventListener(){}};
+  const sprite=()=>({width:0,height:0,style:{},getContext:()=>canvas.context});
+  let made=0;
+  canvas.hidden=false;canvas.offsetLeft=0;canvas.offsetTop=0;canvas.offsetWidth=width;canvas.offsetHeight=height;
+  canvas.parentNode={insertBefore(node,before){node.parentNode=canvas.parentNode;log.inserted={node,before};},removeChild(node){node.parentNode=null;log.inserted=null;}};
+  canvas.ownerDocument={createElement:()=>made++===0?surface:sprite(),defaultView:{getComputedStyle:()=>({position:'absolute',borderRadius:'12px'})}};
+  return {canvas,surface,log};
+}
+
+test('on a real GPU the WebGL scene is shown directly in a few instanced calls; a software rasteriser keeps the copy',()=>{
+  const run=new RallyRun().reset({worldIndex:3,seed:6,charms:{shieldStart:true}});run.goldRushTime=5;
+  const gpu=glCanvas(),direct=new RallyRenderer(gpu.canvas);
+  assert.equal(direct.backend,'webgl');assert.equal(gpu.canvas.dataset.renderer,'webgl');assert.equal(gpu.canvas.dataset.renderStatus,'webgl-ready');assert.equal(direct.softwareGL,false);
+  assert.equal(gpu.log.inserted.node,gpu.surface);assert.equal(gpu.log.inserted.before,gpu.canvas,'the scene sits right under the 2D layer');
+  direct.draw(run,{time:1,dt:1/60,simDt:1/60});
+  assert.equal(direct.stats.presentation,'layered');assert.equal(gpu.surface.style.display,'block');assert.equal(gpu.surface.style.width,'390px');assert.equal(gpu.canvas.style.background,'transparent');
+  assert.ok(!gpu.canvas.context.images.includes(gpu.surface),'no per-frame copy of the scene');assert.ok(gpu.canvas.context.calls.includes('clearRect'));
+  assert.ok(direct.stats.shapes>300,'a full scene');assert.ok(gpu.log.draws<=18,`${gpu.log.draws} draw calls`);assert.equal(gpu.log.instances,direct.stats.shapes);
+  assert.ok(gpu.log.uploads.every(length=>length%22===0),'whole instances are uploaded');
+  gpu.canvas.hidden=true;direct.resize();assert.equal(gpu.surface.style.display,'none','the scene hides with its canvas');gpu.canvas.hidden=false;direct.resize();
+  // Sustained long frames trade sharpness for speed, down to half and no further.
+  const sharp=gpu.surface.width;for(let i=0;i<400;i++)direct.draw(run,{time:2+i*.05,dt:.05,simDt:.05});
+  assert.equal(direct.renderScale,.5);assert.ok(gpu.surface.width<sharp*.6&&gpu.surface.width>=sharp*.49);assert.equal(gpu.canvas.width,390,'effects and text keep their resolution');
+  direct._lost({preventDefault(){}});assert.equal(direct.backend,'software-3d');assert.equal(gpu.canvas.dataset.renderStatus,'webgl-context-lost');assert.equal(gpu.surface.style.display,'none');assert.equal(gpu.canvas.style.background,'');
+  direct.destroy();assert.equal(gpu.log.inserted,null,'destroy removes the extra canvas');
+  const cpu=glCanvas({renderer:'Google SwiftShader'}),copied=new RallyRenderer(cpu.canvas);
+  assert.equal(copied.softwareGL,true);assert.equal(cpu.log.inserted,null);copied.draw(run,{time:1,dt:1/60,simDt:1/60});
+  assert.equal(copied.stats.presentation,'copy');assert.equal(cpu.canvas.context.images.filter(image=>image===cpu.surface).length,1,'one copy per frame');assert.equal(cpu.canvas.dataset.renderer,'webgl');
+  assert.equal(copied.setLayered(true),true);copied.draw(run,{time:2,dt:1/60,simDt:1/60});assert.equal(copied.stats.presentation,'layered');copied.destroy();
+  const plain=glCanvas({instancing:false}),each=new RallyRenderer(plain.canvas,{layered:false});
+  each.draw(run,{time:1,dt:1/60,simDt:1/60});assert.equal(each.stats.presentation,'copy');assert.ok(plain.log.draws>300&&plain.log.draws===each.stats.shapes,'without instancing every shape still draws');each.destroy();
 });
