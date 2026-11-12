@@ -82,6 +82,8 @@ test('reduced motion removes shake, freezes and flight, and keeps bursts tiny', 
   let arrived = 0; fx.fly({ x: 0, y: 0, target: () => ({ x: 9, y: 9 }), draw() {}, onArrive: () => arrived++ });
   assert.equal(arrived, 1); assert.equal(fx.fliers.length, 0);
   const popup = fx.popup('+10', 5, 5); assert.equal(popup.rise, 0);
+  // No full-screen flashes at all.
+  let painted = 0; fx.flash('#ffffff', .8, .5); fx.drawOverlay({ save() {}, restore() {}, fillRect() { painted++; } }, 100, 100); assert.equal(painted, 0);
 });
 
 test('bad inputs and bad random values never create non-finite state', () => {

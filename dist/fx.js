@@ -55,7 +55,7 @@ export class Juice {
   shake(amount=.3){if(this.reducedMotion)return;this.trauma=clamp(this.trauma+finite(amount),0,1);}
   kick(dx=0,dy=0){if(this.reducedMotion)return;this.kickX=clamp(this.kickX+finite(dx),-40,40);this.kickY=clamp(this.kickY+finite(dy),-40,40);}
   zoomPunch(amount=.04){if(this.reducedMotion)return;this.zoom=clamp(this.zoom+finite(amount),-.12,.12);}
-  flash(color='#ffffff',strength=.35,life=.22){if(this.reducedMotion)strength*=.35;this._flash={color,strength:clamp(finite(strength),0,.8),life:clamp(finite(life,.2),.05,1.5),max:clamp(finite(life,.2),.05,1.5)};}
+  flash(color='#ffffff',strength=.35,life=.22){if(this.reducedMotion)return;this._flash={color,strength:clamp(finite(strength),0,.8),life:clamp(finite(life,.2),.05,1.5),max:clamp(finite(life,.2),.05,1.5)};}
   // Screen offset for this frame. Trauma is squared so small bumps stay subtle.
   get offset(){
     if(this.reducedMotion||(!this.trauma&&!this.kickX&&!this.kickY&&!this.zoom))return {x:0,y:0,rot:0,zoom:1};
