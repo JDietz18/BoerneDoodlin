@@ -1,5 +1,7 @@
 // Doodle Onward · deterministic RV Rally simulation and native WebGL scenery.
 // No network, third-party renderer, textures, or saved-state side effects.
+// RallyRun is the seeded 60-second drive; RallyRenderer draws it with WebGL or
+// a software 3D fallback, and layers shared game feel (fx.js) over either.
 import { Juice, hash01 } from './fx.js?v=20';
 
 export const RALLY_WORLD = Object.freeze({ lanes: Object.freeze([-3, 0, 3]), halfWidth: 4.8, viewDistance: 175 });
@@ -416,7 +418,7 @@ const UNIFORMS = ['uViewProjection', 'uFog', 'uZenith', 'uCamera', 'uBeam', 'uBe
 const INSTANCE_FLOATS = 22, INSTANCE_BYTES = INSTANCE_FLOATS * 4;
 // Solid shapes go front-most kinds first so the big road and sky fills are depth-rejected.
 const SOLID_ORDER = ['cube', 'cone', 'cylinder', 'gem', 'pyr', 'hex', 'disc', 'quad', 'card'], SHEER_ORDER = ['quad', 'disc', 'card', 'cube', 'cone', 'cylinder', 'pyr', 'hex', 'gem'];
-const SKY_GRADIENT = [0, 1, 0], SKY_TOP = [1, 0, 0];
+const SKY_GRADIENT = [0, 1, 0], SKY_TOP = [1, 0, 0], TINTED = ['zenith', 'fog', 'ground', 'shoulder', 'road'];
 const OVERLAY_METHODS = ['save', 'restore', 'translate', 'rotate', 'scale', 'arc', 'ellipse', 'rect', 'bezierCurveTo', 'fillText', 'strokeText', 'clearRect', 'drawImage'];
 
 /** The supplied canvas is always the 2D presentation surface, so a software
@@ -445,7 +447,7 @@ export class RallyRenderer {
     this._local = new Float32Array(16); this._world = new Float32Array(16); this._rvMatrix = new Float32Array(16); this._parent = null;
     this._view = new Float32Array(16); this._projection = new Float32Array(16); this._vp = new Float32Array(IDENTITY); this._eye = [0, 7, 12];
     this._bend = { amp: 0, freq: 0, theta: 0, sin: 0, cos: 1 }; this._lift = { amp: 0, freq: 0, theta: 0, sin: 0, cos: 1 };
-    this._palette = { zenith: [0, 0, 0], fog: [0, 0, 0], ground: [0, 0, 0], shoulder: [0, 0, 0], road: [0, 0, 0], dash: [0, 0, 0], tint: [0, 0, 0] };
+    this._palette = { zenith: [0, 0, 0], fog: [0, 0, 0], ground: [0, 0, 0], shoulder: [0, 0, 0], road: [0, 0, 0], dash: [0, 0, 0] };
     this._horizon = { x: 0, y: 0, ux: 0, uy: 1 }; this._point = { x: 0, y: 0, scale: 1, visible: false }; this._anchor = { x: 0, y: 0, scale: 1, visible: false };
     this._hud = { x: 0, y: 0 }; this._decalBias = 0; this._calls = 0; this._shapes = 0; this._fogScale = 1; this._sceneLayer = 0; this._fit = null; this._fitKey = '';
     this._state = null; this._lastTime = undefined; this._sprites = new Map(); this._tmp = [0, 0, 0]; this._tmp2 = [0, 0, 0];
@@ -462,7 +464,7 @@ export class RallyRenderer {
     this.surface?.addEventListener('webglcontextrestored', this._restored);
     this._initGL(); this._layered = this.is3D && (layered === true || (layered === 'auto' && !this.softwareGL)) && this._attachSurface(); this.resize();
     if (typeof ResizeObserver !== 'undefined') { this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas); }
-    if (this._layered && typeof MutationObserver !== 'undefined') { this.watcher = new MutationObserver(() => this._syncSurface()); this.watcher.observe(canvas, { attributes: true, attributeFilter: ['hidden', 'class', 'style'] }); }
+    if (this._layered && typeof MutationObserver !== 'undefined') { this.watcher = new MutationObserver(() => this._syncSurface()); this.watcher.observe(canvas, { attributes: true, attributeFilter: ['hidden', 'class'] }); }
   }
   _initGL() {
     try {
@@ -509,10 +511,10 @@ export class RallyRenderer {
   }
   _syncSurface(measure = false) {
     if (!this._layered || !this.surface?.style) return;
-    const canvas = this.canvas, style = this.surface.style, show = this.is3D && !canvas.hidden;
-    style.display = show ? 'block' : 'none';
+    const canvas = this.canvas, style = this.surface.style, show = this.is3D && !canvas.hidden, display = show ? 'block' : 'none', back = this.is3D ? 'transparent' : '';
+    if (style.display !== display) style.display = display;
     // The 2D layer must be see-through while the scene shows underneath it.
-    if (canvas.style) canvas.style.background = this.is3D ? 'transparent' : '';
+    if (canvas.style && canvas.style.background !== back) canvas.style.background = back;
     if (measure && show && canvas.offsetWidth) {
       style.left = `${canvas.offsetLeft}px`; style.top = `${canvas.offsetTop}px`; style.width = `${canvas.offsetWidth}px`; style.height = `${canvas.offsetHeight}px`;
       style.borderRadius = canvas.ownerDocument.defaultView.getComputedStyle(canvas).borderRadius;
@@ -653,7 +655,8 @@ export class RallyRenderer {
     let rise = 0;
     if (hill) for (let i = 0; i < 24; i++) for (let d = 30; d <= 110; d += 10) { const t = i / 24 * TURN; rise = Math.max(rise, (hill * (Math.sin(t + hillFreq * d) - Math.sin(t) - hillFreq * d * Math.cos(t)) + 1.2 - eyeY) / (d + eyeZ)); }
     const far = transformPoint(this._view, 0, 0, -1, 0), rear = transformPoint(this._view, 0, 0, 1.9, 1), horizon = far[1] / -far[2] + rise, wheels = rear[1] / -rear[2];
-    const high = 1 - 2 * (top + h * .025) / h, low = -1 + 2 * Math.max(bottom + h * .035, h * .09) / h;
+    // With no insets reported, leave room for a HUD anyway.
+    const high = 1 - 2 * Math.max(top + h * .025, h * .12) / h, low = -1 + 2 * Math.max(bottom + h * .035, h * .13) / h;
     const tall = Math.max(.5, high - low) / (horizon - wheels), fitWidth = .98 * (1 - (left + right) / w) * aspect * -rear[2] / 4.9;
     const focal = clamp(Math.min(tall, fitWidth), .7, 3.4);
     this._fitKey = key; this._fit = { focal, oy: low - focal * wheels, ox: (left - right) / w, eyeY, eyeZ, lookY, lookZ, aspect };
@@ -684,7 +687,7 @@ export class RallyRenderer {
   _tintPalette(run, reducedMotion) {
     const theme = THEMES[run.worldIndex || 0], pal = this._palette, s = this._state, beat = reducedMotion ? .5 : .5 + .5 * Math.sin(s.clock * 9);
     const gold = s.gold * .34, fever = s.fever * (.16 + .1 * beat), dusk = s.urgency * (theme.night ? .22 : .3);
-    for (const key of ['zenith', 'fog', 'ground', 'shoulder', 'road']) {
+    for (const key of TINTED) {
       const out = pal[key], weight = key === 'zenith' || key === 'fog' ? 1 : .22;
       mix3(out, theme[key], GOLD, gold * weight); mix3(out, out, PINK, fever * weight); mix3(out, out, CORAL, dusk * weight);
     }
@@ -739,7 +742,7 @@ export class RallyRenderer {
       this._shapes += count;
     }
   }
-  _box(...args) { this._shape('cube', ...args); }
+  _box(x, y, z, sx, sy, sz, color, yaw, roll, glow, alpha, pitch) { this._shape('cube', x, y, z, sx, sy, sz, color, yaw, roll, glow, alpha, pitch); }
   _flat(x, y, z, sx, sz, color, glow = 0, alpha = 1) { this._shape('quad', x, this._sceneLayer === 3 ? y + this._decalBias : y, z, sx, 1, sz, color, 0, 0, glow, alpha); }
   _draw3D(run, time, reducedMotion) {
     const gl = this.gl, at = this.locations, pal = this._palette, bend = this._bend, lift = this._lift, eye = this._eye;
@@ -980,13 +983,11 @@ export class RallyRenderer {
           if (!far) for (let side = -1; side <= 1; side += 2) { this._box(e.x+side*.86,.2,z,.16,.4,.7,DARK); this._shape('gem',e.x+side*.86,1.12,z,.3,.36,.3,GOLD,0,0,side>0?blink:1-blink); }
         }
       } else if (e.type === 'ramp') {
-        if (e.used) continue;
         this._sceneLayer = 3; for (let i = 0; i < 2; i++) this._flat(e.x,.03,z+3.4+i*2.4,1.4,.9,GOLD,1,.55+.3*blink); this._sceneLayer = 4;
         this._box(e.x,.43,z,2.2,.14,3.2,CREAM,0,0,.1,1,.26); this._box(e.x,.42,z-1.3,2.2,.84,.5,CRATE);
         for (let side = -1; side <= 1; side += 2) this._box(e.x+side*1.1,.5,z,.14,.3,3.2,CORAL,0,0,.3,1,.26);
         this._box(e.x,.53,z-.2,1.3,.05,.5,GOLD,0,0,1,1,.26);
       } else if (e.type === 'splash') {
-        if (e.used) continue;
         this._sceneLayer = 3; const ripple = reducedMotion ? .5 : (t*.9+e.id*.37)%1;
         this._flat(e.x,.028,z,2.7,4.4,WATER,.5,.85); this._flat(e.x,.032,z,1.5+ripple,2.4+ripple*1.6,FOAM,.8,.5*(1-ripple)); this._sceneLayer = 4;
         if (!far) for (let i = -1; i <= 1; i += 2) this._shape('gem',e.x+i*.7,.5+bob*2,z+i*.8,.24,.5,.24,FOAM,turn,0,.9,.7);
@@ -1060,7 +1061,7 @@ export class RallyRenderer {
     this._box(-.62,2,-.95,.04,.8,.04,DARK);this._box(-.44,2.3,-.95,.36,.2,.02,FLAG_COLORS[run.characterId]||GOLD,reducedMotion?0:Math.sin(t*9)*.3,0,.4);
     if(run.magnetTime>0)for(let i=0;i<3;i++){const a=t*3+i*TURN/3;this._shape('gem',Math.cos(a)*1.5,1+Math.sin(a*2)*.2,Math.sin(a)*2.2,.26,.34,.26,MINT,a,0,1);}
     // Shield: a faceted bubble that bursts outward when it takes a hit.
-    if(run.shieldCharges>0){this._shape('gem',0,1.15,0,3.3,3.3,5,BUBBLE,t*.6,0,.9,.22);if(run.shieldCharges>1)this._shape('gem',0,1.15,0,3.9,3.9,5.8,WHITE,-t*.5,0,.9,.12);}
+    if(run.shieldCharges>0){this._shape('gem',0,1.15,0,3.4,3.4,4.6,BUBBLE,t*.6,0,.9,.2);this._shape('gem',0,1.15,0,3.4,3.4,4.6,BUBBLE,t*.6+Math.PI/4,0,.9,.14);if(run.shieldCharges>1)this._shape('gem',0,1.15,0,4.1,4.1,5.4,WHITE,-t*.5,0,.9,.12);}
     if(s.shieldPop>0){const grow=1+(1-s.shieldPop)*1.6;this._shape('gem',0,1.15,0,3.3*grow,3.3*grow,5*grow,BUBBLE,t,0,1,.4*s.shieldPop);}
     this._parent=null;
   }
@@ -1098,7 +1099,7 @@ export class RallyRenderer {
     c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.fillStyle=css(pal.fog);c.fillRect(0,0,w,h);
     if(typeof c.createLinearGradient==='function'){
       // Sky gradient from the zenith down to the horizon haze.
-      const horizon=this._horizon.y*h/this.height,sky=c.createLinearGradient(0,horizon-h*.62,0,horizon);sky.addColorStop(0,css(pal.zenith));sky.addColorStop(1,css(pal.fog));
+      const horizon=this._horizon.y*h/this.height,sky=c.createLinearGradient(0,horizon-.36*this._projection[5]*h*.5,0,horizon);sky.addColorStop(0,css(pal.zenith));sky.addColorStop(1,css(pal.fog));
       c.fillStyle=sky;c.fillRect(0,0,w,Math.max(0,Math.min(h,horizon+1)));
     }
     state.faces.sort((a,b)=>a.layer-b.layer||b.depth-a.depth);c.lineWidth=.65;c.lineJoin='round';
