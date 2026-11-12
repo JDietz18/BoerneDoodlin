@@ -1,0 +1,19 @@
+Doodle Onward — release 13
+Published: 2026-11-11 Pacific time (2026-11-12 UTC)
+Live game: https://griffin-snack-patrol.jdietz.chatgpt.site/
+Sites source commit: 497566edfd452d58746e9f0d6101ed5ce4c650f2
+Validation: 130 tests passed; 0 failed.
+
+This package contains the complete game source, assets, tests, and documentation.
+The intended GitHub destination is JDietz18/BoerneDoodlin. The connection returned
+404, so this release has not been pushed to that GitHub repository.
+
+Preview independently from the extracted Doodle-Onward directory:
+  python3 -m http.server 8000 --directory dist
+Then open http://localhost:8000 in a browser.
+
+Tests:
+  node --test tests/*.test.mjs
+
+Git metadata, Site hosting identity, credentials, and the temporary QA page are
+excluded. Serve dist/ as a static site when integrating with other hosting.

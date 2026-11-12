@@ -1,0 +1,280 @@
+/* In-run layout: heads-up display, bonus-stack meter, and touch controls.
+   Phones play full screen with controls drawn over the bottom of the field.
+   Everything is scoped under #app so it wins over the older camp styles. */
+
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#app{--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);--hud-ink:#fff4db;--hud-glass:#123c38d9;--hud-line:#fff4db3d}
+#app .topbar{padding-top:var(--safe-t);box-sizing:content-box}
+body.playing{overflow:hidden;overscroll-behavior:none;touch-action:none}
+body.playing #arena,body.playing #arena *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#app #arena{touch-action:manipulation}
+body.playing #arena{touch-action:none}
+
+/* ---- heads-up display ------------------------------------------------ */
+#app .hud{position:absolute;inset:0;z-index:4;pointer-events:none;color:var(--hud-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+#app .hud::before{content:'';position:absolute;inset:0 0 auto;height:calc(var(--hud-h,118px) + 36px);background:linear-gradient(#0e2f2ecc,#0e2f2e66 55%,#0e2f2e00);pointer-events:none}
+#app .hud-progress{position:absolute;inset:var(--safe-t) 0 auto;height:4px;background:#0000002e}
+#app .hud-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9fe3d4,#f6cc70);border-radius:0 3px 3px 0;transition:width .25s linear}
+#app .hud-top{position:absolute;top:calc(10px + var(--safe-t));left:calc(12px + var(--safe-l));right:calc(12px + var(--safe-r));display:grid;grid-template:"pause id id timer score" auto "obj obj stack stack stack" auto / auto auto minmax(0,1fr) auto auto;align-items:center;gap:6px 10px}
+#app .hud-pause{grid-area:pause;pointer-events:auto;flex:none;width:46px;height:46px;border-radius:50%;border:1.5px solid var(--hud-line);background:var(--hud-glass);color:var(--hud-ink);display:grid;place-items:center;padding:0;touch-action:manipulation}
+#app .hud-pause svg{width:20px;height:20px}
+#app .hud-pause:active{transform:scale(.94)}
+#app .hud-id{grid-area:id;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+#app #run-region{max-width:100%;font-size:12px;font-weight:800;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #0b2a28}
+#app .hud-hearts{display:flex;flex-wrap:wrap;gap:3px;max-width:100%;min-height:18px}
+#app .hud-hearts svg{width:18px;height:18px;fill:#ff8f7c;filter:drop-shadow(0 1px 0 #0b2a2899);transition:fill .2s,transform .2s}
+#app .hud-hearts svg.empty{fill:#0b2a2866;transform:scale(.82)}
+#app .hud-hearts.danger svg:not(.empty){animation:hud-beat .7s ease-in-out infinite}
+#app .hud-hearts svg.lost{animation:hud-lost .5s ease-out}
+#app .hud-objectives{grid-area:obj;display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-width:0}
+#app .obj{display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 7px;border-radius:12px;background:var(--hud-glass);border:1px solid var(--hud-line);font-size:11px;font-weight:800;white-space:nowrap}
+#app .obj svg{width:14px;height:14px;fill:#fff4db40;transition:fill .2s}
+#app .obj svg.on{fill:#f6cc70}
+#app .obj svg.bump,#app .obj.bump{animation:hud-pop .45s cubic-bezier(.2,1.6,.4,1)}
+#app .obj b{font-size:12px}
+#app .obj i{font-style:normal;font-weight:700;opacity:.86}
+#app .obj.parcel.on{background:#2f6b4ae6;border-color:#b8e994}
+#app #score{grid-area:score;justify-self:end;font:30px/1 var(--display);letter-spacing:.01em;text-shadow:0 2px 0 #0b2a28;transform-origin:100% 50%}
+#app #score.bump{animation:hud-score-pop .3s cubic-bezier(.2,1.6,.4,1)}
+
+/* ---- bonus stack meter ------------------------------------------------- */
+#app .stack{grid-area:stack;justify-self:end;display:flex;align-items:center;gap:6px;--tier-color:#fff4db;pointer-events:auto;padding:4px 0 12px;margin:-4px 0 -12px}
+#app .stack[hidden]{display:none}
+#app .stack[data-tier="2"]{--tier-color:#fff0a8}
+#app .stack[data-tier="5"]{--tier-color:#ffd75e}
+#app .stack[data-tier="10"]{--tier-color:#ffb057}
+#app .stack[data-tier="20"]{--tier-color:#ff9ecb}
+#app .stack[data-tier="30"]{--tier-color:#ffffff}
+#app .stack-total{order:2;font:24px/1 var(--display);color:var(--tier-color);text-shadow:0 2px 0 #0b2a28;min-width:44px;text-align:right;transform-origin:100% 50%}
+#app .stack-total.bump{animation:hud-pop .35s cubic-bezier(.2,1.8,.4,1)}
+#app .stack[data-tier="0"] .stack-total{opacity:.55;font-size:18px}
+#app .stack[data-tier="30"] .stack-total{animation:hud-rainbow 1s linear infinite}
+#app .stack-layers{display:flex;gap:3px}
+#app .layer{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:60px;height:36px;border-radius:9px;background:#123c38b0;border:1px solid var(--hud-line);opacity:.62;transition:opacity .2s,background .2s,border-color .2s}
+#app .layer em{font:800 11px/1 Inter,system-ui,sans-serif;font-style:normal;letter-spacing:.01em;white-space:nowrap}
+#app .layer b{font-size:12px;line-height:1;font-weight:900}
+#app .layer i{position:absolute;left:0;bottom:0;height:4px;width:calc(var(--fill,0)*100%);background:#fff4db8c;border-radius:0 3px 0 0}
+#app .layer.on{opacity:1;border-color:#fff4dbb3}
+#app .layer.on i{background:#fff}
+#app .layer.chain.on{background:#2f7f6ef2}
+#app .layer.frenzy.on{background:#c9603cf2}
+#app .layer.gold.on{background:#b98a1ff2}
+#app .layer.power.on{background:#3f77a8f2}
+#app .layer.bump{animation:hud-pop .4s cubic-bezier(.2,1.8,.4,1)}
+#app .layer.low{animation:hud-blink .45s steps(2) infinite}
+#app .layer.cooling{opacity:.4}
+#app button.layer{pointer-events:auto;color:inherit;font:inherit;padding:0;margin:0;touch-action:manipulation;cursor:pointer}
+#app .layer.power.ready{opacity:1;border-color:#fff4db;background:#2f7f6ef2;animation:hud-ready 1s ease-in-out infinite}
+#app button.obj{position:relative;pointer-events:auto;color:inherit;font-family:inherit;touch-action:manipulation;cursor:pointer;min-height:34px;padding:0 12px;border-radius:17px}
+#app button.obj::after{content:'';position:absolute;inset:-6px -5px}
+#app button.obj.spent{opacity:.5}
+
+/* ---- timer, callout, tip ------------------------------------------------- */
+#app .hud-timer{grid-area:timer;min-width:52px;height:52px;padding:0 8px;border-radius:26px;display:grid;place-items:center;background:var(--hud-glass);border:2px solid var(--hud-line);font:28px/1 var(--display);text-shadow:0 2px 0 #0b2a28}
+#app .hud-timer[hidden]{display:none}
+#app .hud-timer.urgent{border-color:#ffb057;color:#ffd9a8}
+#app .hud-timer.final{border-color:#ff7a66;color:#ffd0c8;background:#7a2f28e6}
+#app .hud-timer.tick{animation:hud-tick .5s cubic-bezier(.2,1.6,.4,1)}
+#app .hud-callout{position:absolute;left:50%;top:calc(var(--hud-h,118px) + 6px);transform:translate(-50%,-6px);max-width:min(88%,460px);width:max-content;padding:8px 14px;border-radius:14px;border:1.5px solid #fff0bb;background:#1f4d42f2;font:15px/1.25 var(--display);text-align:center;opacity:0;transition:opacity .16s,transform .16s;pointer-events:none}
+#app .hud-callout.visible{opacity:1;transform:translate(-50%,0)}
+#app .hud-tip{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:12px;align-items:center;max-width:92%;padding:8px 14px;border-radius:12px;background:var(--hud-glass);border:1px solid var(--hud-line);font-size:12px;font-weight:600}
+#app .hud-tip strong{font-size:12px}
+#app[data-input=touch] .hud-tip{display:none}
+#app .hud-tip.faded{opacity:0;transition:opacity 1s}
+#app[data-activity=memory] .hud-tip{display:none}
+
+/* ---- no on-screen controls: the field itself is the controller -------------------- */
+/* Keyboard, switch, and screen reader users still get real buttons. They stay
+   out of sight until one takes focus. */
+#app .assist-controls{position:absolute;left:calc(12px + var(--safe-l));bottom:calc(12px + var(--safe-b));z-index:7;display:flex;gap:6px;flex-wrap:wrap;max-width:80%}
+#app .assist-controls[hidden]{display:none}
+#app .assist-controls button{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#app .assist-controls button:focus-visible{position:static;width:auto;height:auto;margin:0;clip:auto;overflow:visible;padding:10px 14px;border-radius:12px;border:2px solid #fff4db;background:#123c38;color:#fff4db;font:700 13px Inter,system-ui,sans-serif}
+#app .safe-probe{position:absolute;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px);box-sizing:content-box;visibility:hidden;pointer-events:none}
+/* First-time coach marks: a short, fading hint about where to touch. */
+#app .coach{position:absolute;left:0;right:0;bottom:calc(18% + var(--safe-b));display:flex;justify-content:space-around;align-items:flex-end;gap:10px;padding:0 calc(14px + var(--safe-r)) 0 calc(14px + var(--safe-l));pointer-events:none;transition:opacity .5s}
+#app .coach[hidden]{display:none}
+#app .coach.leaving{opacity:0}
+#app .coach-tip{flex:1;max-width:210px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;color:#fff4db;font:800 14px/1.25 Inter,system-ui,sans-serif;text-shadow:0 1px 3px #0b2a28,0 0 12px #0b2a28}
+#app .coach-tip small{font-size:12px;font-weight:600;opacity:.9}
+#app .coach-tip.done{opacity:.25;transition:opacity .4s}
+#app .coach-hand{width:46px;height:46px;border-radius:50%;border:2.5px solid #fff4db;background:#fff4db33;box-shadow:0 0 0 0 #fff4db66}
+#app .coach-hand.slide{animation:coach-slide 1.5s ease-in-out infinite}
+#app .coach-hand.tap{animation:coach-tap 1.1s ease-out infinite}
+#app .coach-hand.swipe{animation:coach-swipe 1.5s ease-in-out infinite}
+#app .coach-hand.drag{animation:coach-slide 1.8s ease-in-out infinite}
+/* ---- phones: the run takes the whole screen ------------------------------- */
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
+ body.playing{position:fixed;inset:0;width:100%}
+ body.playing #app{padding:0;max-width:none}
+ body.playing #app .topbar{display:none}
+ body.playing #app #arena{position:fixed;inset:0;width:100%;height:100%;min-height:0;max-height:none;border-radius:0;border:0;box-shadow:none}
+ body.playing #app #memory-board{padding-top:calc(var(--hud-h,118px) + 4px)}
+ #app .overlay{overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l))}
+}
+@media (max-width:400px){
+ #app #score{font-size:26px}
+}
+/* Upright phones: goals and the stack each get a row, so every layer is wide
+   enough to read and to tap. */
+@media (max-width:560px){
+ #app .hud-top{grid-template:"pause id id timer score" auto "obj obj obj obj obj" auto "stack stack stack stack stack" auto / auto auto minmax(0,1fr) auto auto}
+ #app .stack{justify-self:stretch}
+ #app .stack-layers{flex:1;gap:4px}
+ #app .layer{flex:1 1 0;width:auto;height:38px}
+ #app .stack-total{min-width:50px}
+}
+@media (max-height:560px) and (orientation:landscape){
+ #app .hud-top{top:calc(6px + var(--safe-t))}
+ #app .result-card{max-width:560px}
+}
+/* A phone on its side keeps two steady rows: one line needs about 900 px clear
+   of the notch, and a HUD that changes height mid-run is worse than a taller one. */
+@media (max-height:560px) and (orientation:landscape) and (min-width:1024px){
+ #app .hud-top{grid-template:"pause id obj stack timer score" auto / auto auto minmax(0,1fr) auto auto auto}
+ #app .hud-objectives{justify-content:flex-start}
+ #app .layer{width:56px}
+}
+
+/* ---- result card polish ----------------------------------------------------- */
+#app .result-medals svg.pending{opacity:.15;transform:scale(.6)}
+#app .result-medals svg.stamp{animation:hud-stamp .42s cubic-bezier(.2,1.9,.4,1)}
+#app .result-next{display:block;margin:6px auto 0;font-size:13px}
+
+/* ---- motion ----------------------------------------------------------------- */
+@keyframes hud-pop{0%{transform:scale(.7)}60%{transform:scale(1.22)}100%{transform:scale(1)}}
+@keyframes hud-score-pop{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes hud-lost{0%{transform:scale(1.5);fill:#fff}100%{transform:scale(.82)}}
+@keyframes hud-beat{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
+@keyframes hud-tick{0%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes hud-blink{0%{opacity:1}100%{opacity:.5}}
+@keyframes hud-ready{0%,100%{box-shadow:0 0 0 0 #f6cc7000}50%{box-shadow:0 0 0 7px #f6cc7066}}
+@keyframes hud-rainbow{0%{color:#ff9ecb}25%{color:#ffd75e}50%{color:#9fe3d4}75%{color:#b9a3f0}100%{color:#ff9ecb}}
+@keyframes coach-slide{0%,100%{transform:translateX(-26px)}50%{transform:translateX(26px)}}
+@keyframes coach-swipe{0%{transform:translate(-20px,0);opacity:.4}50%{transform:translate(22px,0);opacity:1}100%{transform:translate(22px,0);opacity:0}}
+@keyframes coach-tap{0%{transform:scale(1);box-shadow:0 0 0 0 #fff4db88}40%{transform:scale(.82)}100%{transform:scale(1);box-shadow:0 0 0 22px #fff4db00}}
+@keyframes hud-stamp{0%{transform:scale(2.4) rotate(-18deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
+
+/* ---- readable result and pause cards on phones ------------------------------- */
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
+ #app .result-card{padding:18px 16px}
+ #app .result-line{font-size:13px;line-height:1.5}
+ #app .result-stats span{font-size:11px;letter-spacing:.2px}
+ #app .result-goals>span{font-size:11px;padding:6px 9px}
+ #app .reward-line{font-size:14px}
+ #app .result-unlocks{font-size:12px}
+ #app .result-record{font-size:11px}
+ #app .result-card .eyebrow,#app .pause-card .eyebrow{font-size:11px}
+ #app .result-card .secondary,#app .pause-card .secondary{min-height:46px;font-size:13px}
+ #app .result-foot .text-button{font-size:13px;padding:8px 2px;min-height:44px}
+ #app .result-card .primary{min-height:44px}
+ #app .pause-card p{font-size:14px}
+}
+@media (max-height:560px) and (orientation:landscape){
+ #app .result-card{width:min(760px,100%);column-count:2;column-gap:26px;padding:14px 22px;text-align:center}
+ #app .result-card>*{break-inside:avoid}
+ #app .result-card .result-goals,#app .result-card .result-stats+.reward-line{break-before:column}
+ #app .result-card h2{font-size:25px;margin:4px 0}
+ #app .result-line,#app .result-foot{display:none}
+ #app .result-stats{padding:8px 0}
+ #app .reward-line{margin:10px 0}
+ #app .result-card .button-pair{margin-top:8px}
+}
+
+@media (max-height:600px) and (orientation:portrait){
+ #app .result-line{display:none}
+ #app .result-card h2{font-size:25px;margin:4px 0}
+}
+
+/* Trail Scout keeps its corner map clear: messages rise from the bottom instead. */
+#app[data-activity=scout] .hud-callout{top:auto;bottom:calc(60px + var(--safe-b));transform:translate(-50%,6px)}
+#app[data-activity=scout] .hud-callout.visible{transform:translate(-50%,0)}
+/* On its side, messages sit to the right: clear of the buddy's climb on the
+   trail and of the words the road and the storm draw in the middle. */
+@media (max-height:560px) and (orientation:landscape){
+ #app:is([data-activity=platform],[data-activity=rally],[data-activity=snack]) .hud-callout{left:auto;right:calc(12px + var(--safe-r));max-width:min(46%,420px);transform:translate(0,-6px);font-size:14px;padding:7px 12px}
+ #app:is([data-activity=platform],[data-activity=rally],[data-activity=snack]) .hud-callout.visible{transform:translate(0,0)}
+}
+/* On its side there is little height to spare, so they run wide and low. */
+@media (max-height:560px) and (orientation:landscape){
+ #app[data-activity=scout] .hud-callout{bottom:calc(50px + var(--safe-b));max-width:min(84%,600px);font-size:14px;padding:7px 14px}
+ #app[data-activity=scout] .coach{bottom:calc(112px + var(--safe-b))}
+ #app[data-activity=platform] .coach{bottom:calc(38% + var(--safe-b))}
+}
+
+/* ---- backup by text --------------------------------------------------------------- */
+#app~dialog .paste-row,.paste-row{display:grid;gap:10px;margin-top:10px}
+.paste-row[hidden]{display:none}
+.paste-row textarea{width:100%;box-sizing:border-box;min-height:96px;padding:10px;border-radius:10px;border:1.5px solid #9db38d;background:#fffaf0;color:#183d37;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+
+/* ---- camp screen on a phone: readable in a moving car, easy to tap ----------------- */
+@media (max-width:760px){
+ #app .level-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
+ #app .wordmark small{font-size:11px;letter-spacing:.3px}
+ #app .topnav button{font-size:12px;min-height:44px}
+ #app .hero-world>span,#app .hero-world small{font-size:11px}
+ #app .top-actions .icon-button{width:44px;height:44px;min-width:44px}
+ #app .top-actions .icon-button svg{width:20px;height:20px}
+ #app .eyebrow{font-size:11px;letter-spacing:.08em}
+ #app .adventure-tags span{font-size:11px;padding:6px 10px}
+ #app .play-main small{font-size:12px}
+ #app .route-link{font-size:13px;min-height:44px}
+ #app .crew-heading span{font-size:12px}
+ #app .crew-choice strong{font-size:13px}
+ #app .crew-choice small{font-size:11px;line-height:1.25}
+ #app .crew-check{font-size:11px}
+ #app .pill-button{min-height:44px}
+ #app .pill-button span{font-size:12px}
+ #app .world-tab{min-height:56px}
+ #app .world-tab strong{font-size:13px}
+ #app .world-tab small{font-size:11px}
+ #app .world-stage-heading p{font-size:13px}
+ #app .world-stage-heading span{font-size:11px}
+ #app .level-card strong{font-size:13px}
+ #app .level-card small{font-size:11px;letter-spacing:.02em}
+ #app .world-stage-footer span{font-size:12px;line-height:1.45}
+ #app .world-stage-footer button{font-size:13px;min-height:44px}
+ #app .activity-copy small{font-size:10px;letter-spacing:.04em;line-height:1.3}
+ #app .activity-copy span{font-size:12px;line-height:1.45}
+ #app .activity-copy b{font-size:13px}
+ #app .section-note{font-size:12px}
+ #app .daily-card p,#app .quest-preview p{font-size:13px;line-height:1.45}
+ #app .daily-card .secondary{font-size:13px;min-height:46px}
+ #app .mobile-nav button{font-size:13px;min-height:50px}
+ @media (max-width:359px){#app .mobile-nav{gap:6px;flex-wrap:wrap}#app .mobile-nav button{padding-left:7px;padding-right:7px;gap:4px}}
+ #app .below-game p{font-size:13px}
+ #app .below-game span{font-size:12px}
+ #app .below-game button{font-size:12px;min-height:44px;padding:8px 10px}
+ #app .hero-note span{font-size:11px}
+ .panel-dialog .record-note,.panel-dialog .key-help{font-size:12px;line-height:1.5}
+ .panel-dialog .stack-example span,.panel-dialog .stack-example b,.panel-dialog .stack-example strong{font-size:11px}
+ .panel-dialog kbd{font-size:11px}
+ .panel-dialog .setting small{font-size:12px;line-height:1.4}
+ .panel-dialog .icon-button{width:44px;height:44px;min-width:44px}
+ .panel-dialog .quest-card>small,.panel-dialog .quest-card footer,.panel-dialog .quest-world-label span,.panel-dialog .record-card span,.panel-dialog .sticker strong,.panel-dialog .family-records strong,.panel-dialog .family-records span,.panel-dialog .charm-card p,.panel-dialog .charm-card small,.panel-dialog .loadout-slots>span{font-size:11px}
+ .panel-dialog .secondary{min-height:44px}
+}
+@media (max-width:760px),(max-height:560px) and (orientation:landscape){
+ #app .quest-preview button{min-width:44px;min-height:44px}
+ #app .activity-copy small{font-size:11px}
+}
+@media (max-width:560px){
+ #app .coach{bottom:calc(22% + var(--safe-b))}
+ #app .coach-tip{max-width:46%;font-size:13px}
+ #app .coach-tip small{display:none}
+}
+#app .toast{position:fixed;font-size:13px;bottom:calc(24px + var(--safe-b));z-index:60}
+
+/* ---- Camp Pairs sits directly under the HUD --------------------------------------- */
+#app[data-activity=memory] .hud::before{height:calc(var(--hud-h,110px) + 6px)}
+#app #memory-board{padding-top:calc(var(--hud-h,110px) + 6px)}
+@media (min-width:761px) and (min-height:561px){#app #memory-board{padding-bottom:18px}}
+
+/* ---- a notch at the side: camp and panels keep clear of it ----------------------- */
+/* Side safe areas only exist on a phone held sideways. A run still fills the screen. */
+@media (max-height:560px) and (orientation:landscape){
+ body:not(.playing) #app{padding-left:max(22px,var(--safe-l));padding-right:max(22px,var(--safe-r))}
+}
+#app .panel-dialog{max-width:calc(100% - 18px - var(--safe-l) - var(--safe-r))}

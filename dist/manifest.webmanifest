@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "Doodle Onward",
+  "short_name": "Doodle Onward",
+  "description": "Take the great road trip with Griffin, Kevin, Mittens, and Spike. Explore thirty platform levels, hunt top-down treasures, drive 3D RV rallies, catch Snack Storm treats, and play campfire memory games across five worlds.",
+  "start_url": "/?source=homescreen",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6efdf",
+  "theme_color": "#123d39",
+  "lang": "en",
+  "categories": [
+    "games"
+  ],
+  "icons": [
+    {
+      "src": "/assets/griffin-icon.png?v=21",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
