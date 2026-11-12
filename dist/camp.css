@@ -146,3 +146,56 @@ html[data-reduced-motion=true] #app .a-drop{top:26px}
 html[data-reduced-motion=true] #app .a-cone{top:30px}
 html[data-reduced-motion=true] #app .arcade-live i{transform:none}
 @media (prefers-reduced-motion:reduce){#app .camp-extras *,#app .home-screen *{animation:none!important}#app .a-drop{top:26px}#app .a-cone{top:30px}}
+
+/* ---- panels: backpack, passport, quests, guide ---------------------------- */
+#app .panel-dialog{border:var(--edge);border-radius:26px;background:var(--paper);color:var(--ink);box-shadow:8px 8px 0 var(--ink)}
+#app .panel-dialog::backdrop{background:#10231fcc}
+#app .panel-dialog>header{background:var(--ink);border-bottom:var(--edge)}
+#app .panel-dialog>header h2{color:var(--zap);text-transform:uppercase;font-size:clamp(22px,6.4vw,32px);line-height:1.02;letter-spacing:-.01em}
+#app .panel-dialog>header .icon-button{border:2px solid var(--ink);background:var(--pop);color:#fff;box-shadow:2px 2px 0 var(--zap)}
+#app .panel-dialog .panel-intro{color:var(--ink);font-weight:600}
+#app .panel-dialog .panel-intro strong{padding:1px 6px;border-radius:5px;background:var(--zap)}
+#app .panel-dialog .panel-heading{display:inline-block;margin-top:26px;padding:6px 12px;border-radius:8px;background:var(--ink);color:var(--zap);text-transform:uppercase;font-size:17px;letter-spacing:.01em;transform:rotate(-1deg)}
+#app .panel-dialog .quest-world-label h3{text-transform:uppercase;color:var(--ink)}
+#app .panel-dialog .quest-world-label span{padding:3px 8px;border-radius:999px;background:var(--mint);border:2px solid var(--ink);font-weight:900;color:var(--ink)}
+#app .panel-dialog :is(.quest-card,.upgrade-card,.record-card,.instruction,.setting,.sticker){border:2px solid var(--ink);border-radius:16px;background:#fff;color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+#app .panel-dialog .quest-card>small{color:var(--pop);font-weight:900;letter-spacing:.04em}
+#app .panel-dialog .quest-card h3,#app .panel-dialog .upgrade-card h3,#app .panel-dialog .instruction h3{color:var(--ink);text-transform:uppercase;letter-spacing:-.005em}
+#app .panel-dialog .quest-card.completed{background:var(--mint)}
+#app .panel-dialog .quest-card.completed>small{color:var(--ink)}
+#app .panel-dialog .quest-track{height:12px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden}
+#app .panel-dialog .quest-track i{background:var(--pop);border-radius:0}
+#app .panel-dialog .quest-card footer{font-weight:800;color:var(--ink)}
+#app .panel-dialog .upgrade-card>svg{fill:var(--pop)}
+#app .panel-dialog .upgrade-levels i{border:2px solid var(--ink);background:#fff}
+#app .panel-dialog .upgrade-levels i.done{background:var(--zap)}
+#app .panel-dialog .secondary{border:2px solid var(--ink);border-radius:999px;background:var(--zap);color:var(--ink);font-weight:900;box-shadow:3px 3px 0 var(--ink)}
+#app .panel-dialog .secondary:active:not(:disabled),#app .panel-dialog .charm-card:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+#app .panel-dialog .secondary:disabled{background:#efe7d3;color:#5a6b66;box-shadow:none;border-style:dashed}
+#app .panel-dialog .primary{border:var(--edge);background:var(--pop);color:#fff;font-weight:900;box-shadow:var(--drop)}
+#app .panel-dialog .loadout-slots>span{border:2px dashed var(--ink);border-radius:12px;background:#fff;color:#5a6b66;font-weight:800}
+#app .panel-dialog .loadout-slots>span.filled{border-style:solid;background:var(--grape);color:#fff}
+#app .panel-dialog .charm-card{border:2px solid var(--ink);border-radius:16px;background:#fff;color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+#app .panel-dialog .charm-card h3{color:var(--ink)}
+#app .panel-dialog .charm-card.equipped{background:var(--zap);transform:rotate(-1deg)}
+#app .panel-dialog .charm-card.locked{background:#efe7d3;border-style:dashed;box-shadow:none;opacity:.8}
+#app .panel-dialog .charm-card small{font-weight:800;color:var(--ink)}
+#app .panel-dialog .record-card strong{color:var(--pop);font-size:26px}
+#app .panel-dialog .record-card span{font-weight:900;color:var(--ink)}
+#app .panel-dialog .sticker{opacity:.5;border-style:dashed;box-shadow:none}
+#app .panel-dialog .sticker.earned{opacity:1;border-style:solid;background:var(--zap);box-shadow:3px 3px 0 var(--ink)}
+#app .panel-dialog .sticker.earned:nth-child(odd){transform:rotate(-2deg)}
+#app .panel-dialog .sticker.earned:nth-child(even){transform:rotate(2deg)}
+#app .panel-dialog .family-records>div{border:2px solid var(--ink);border-radius:16px;background:#fff;box-shadow:3px 3px 0 var(--ink)}
+#app .panel-dialog .family-records strong{color:var(--ink)}
+#app .panel-dialog .stack-example{border:var(--edge);border-radius:16px;background:var(--ink);box-shadow:var(--drop)}
+#app .panel-dialog .stack-example span{background:var(--paper);color:var(--ink);border-radius:8px;font-weight:900}
+#app .panel-dialog .stack-example b{color:var(--paper)}
+#app .panel-dialog .stack-example strong{background:var(--zap);color:var(--ink);border-radius:8px}
+#app .panel-dialog .setting input[type=checkbox]{accent-color:var(--pop);width:26px;height:26px}
+#app .panel-dialog .setting strong{color:var(--ink)}
+#app .panel-dialog .record-note,#app .panel-dialog .key-help{color:var(--ink)}
+#app .panel-dialog kbd{border:2px solid var(--ink);background:var(--zap);color:var(--ink);font-weight:900}
+#app .panel-dialog .install-image{border:var(--edge);border-radius:22px;box-shadow:var(--drop)}
+#app .panel-dialog .share-url,#app .panel-dialog .paste-row textarea{border:2px solid var(--ink);border-radius:12px}
+html[data-reduced-motion=true] #app .panel-dialog *{transition:none!important}

@@ -2,7 +2,7 @@
 // No network, third-party renderer, textures, or saved-state side effects.
 // RallyRun is the seeded 60-second drive; RallyRenderer draws it with WebGL or
 // a software 3D fallback, and layers shared game feel (fx.js) over either.
-import { Juice, hash01 } from './fx.js?v=22';
+import { Juice, hash01 } from './fx.js?v=23';
 
 export const RALLY_WORLD = Object.freeze({ lanes: Object.freeze([-3, 0, 3]), halfWidth: 4.8, viewDistance: 175 });
 // Simulation-time beats shared by the engine and the view, so pause freezes them.

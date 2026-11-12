@@ -1,6 +1,6 @@
-import {CHARACTER_ART,ABILITIES} from './characters.js?v=22';
-import {WORLD} from './adventure-engine.js?v=22';
-import {Juice,hash01,ease} from './fx.js?v=22';
+import {CHARACTER_ART,ABILITIES} from './characters.js?v=23';
+import {WORLD} from './adventure-engine.js?v=23';
+import {Juice,hash01,ease} from './fx.js?v=23';
 
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const TAU=Math.PI*2;
@@ -154,7 +154,7 @@ export class Renderer {
   }
   resize(){const r=this.canvas.getBoundingClientRect();this.width=Math.max(1,r.width);this.height=Math.max(1,r.height);const dpr=Math.min(2,window.devicePixelRatio||1);this.canvas.width=Math.round(this.width*dpr);this.canvas.height=Math.round(this.height*dpr);this.dpr=dpr;}
   async load(){
-    await Promise.all(Object.entries(CHARACTER_ART).map(async([id,art])=>{const im=cleanImage(await imageLoad(art.src+'?v=22'));const regions=art.regions||(id==='mittens'?[[0,0,.53,.445],[.53,0,1,.445],[0,.445,.52,1],[.52,.445,1,1]]:undefined);const f=frames(im,2,2,regions);this.sprites[id]={image:im,frames:f,runWidth:Math.max(...f.slice(0,3).map(a=>a.w))};}));
+    await Promise.all(Object.entries(CHARACTER_ART).map(async([id,art])=>{const im=cleanImage(await imageLoad(art.src+'?v=23'));const regions=art.regions||(id==='mittens'?[[0,0,.53,.445],[.53,0,1,.445],[0,.445,.52,1],[.52,.445,1,1]]:undefined);const f=frames(im,2,2,regions);this.sprites[id]={image:im,frames:f,runWidth:Math.max(...f.slice(0,3).map(a=>a.w))};}));
     const decorative=await Promise.allSettled([imageLoad('/assets/route-biomes.jpg'),imageLoad('/assets/family-rv.png'),imageLoad('/assets/griffin-atlas.png')]);
     if(decorative[0].status==='fulfilled')this.biomes=decorative[0].value;
     if(decorative[1].status==='fulfilled'){this.rv=cleanImage(decorative[1].value);this.rvFrame=frames(this.rv,1,1)[0];}

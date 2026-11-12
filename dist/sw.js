@@ -1,18 +1,18 @@
-const CACHE='doodle-onward-journey-v22';
+const CACHE='doodle-onward-journey-v23';
 const OWNED_PREFIXES=['doodle-onward-','boerne-doodlin-','griffin-snack-patrol-'];
 const CORE=[
-  '/','/index.html','/style.css?v=22','/minigames.css?v=22','/manifest.webmanifest',
-  '/game.js?v=22','/platform-engine.js?v=22','/world-levels.js?v=22',
-  '/scout-engine.js?v=22','/journey.js?v=22','/platform-renderer.js?v=22',
-  '/rally3d.js?v=22','/memory-game.js?v=22','/snack-engine.js?v=22',
-  '/renderer.js?v=22','/adventure-engine.js?v=22','/characters.js?v=22',
-  '/audio.js?v=22','/celebrations.js?v=22','/fx.js?v=22','/scout-view.js?v=22',
-  '/hud.js?v=22','/controls.js?v=22','/haptics.js?v=22','/compat.js?v=22','/play.css?v=22','/camp.css?v=22',
-  '/assets/griffin-character-atlas.png?v=22','/assets/pumpkin-atlas.png?v=22',
-  '/assets/mittens-atlas.png?v=22','/assets/spike-atlas.png?v=22',
+  '/','/index.html','/style.css?v=23','/minigames.css?v=23','/manifest.webmanifest',
+  '/game.js?v=23','/platform-engine.js?v=23','/world-levels.js?v=23',
+  '/scout-engine.js?v=23','/journey.js?v=23','/platform-renderer.js?v=23',
+  '/rally3d.js?v=23','/memory-game.js?v=23','/snack-engine.js?v=23',
+  '/renderer.js?v=23','/adventure-engine.js?v=23','/characters.js?v=23',
+  '/audio.js?v=23','/celebrations.js?v=23','/fx.js?v=23','/scout-view.js?v=23',
+  '/hud.js?v=23','/controls.js?v=23','/haptics.js?v=23','/compat.js?v=23','/play.css?v=23','/camp.css?v=23',
+  '/assets/griffin-character-atlas.png?v=23','/assets/pumpkin-atlas.png?v=23',
+  '/assets/mittens-atlas.png?v=23','/assets/spike-atlas.png?v=23',
   '/assets/family-rv.png','/assets/route-biomes.jpg',
   '/assets/griffin-atlas.png', // Existing snack/obstacle props only.
-  '/assets/bookman-bold.otf','/assets/griffin-icon.png?v=22',
+  '/assets/bookman-bold.otf','/assets/griffin-icon.png?v=23',
   '/assets/mittens-photo.jpg','/assets/kevin-photo.jpg'
 ];
 const ALLOWED=new Set(CORE.map(path=>new URL(path,self.location.origin).href));
