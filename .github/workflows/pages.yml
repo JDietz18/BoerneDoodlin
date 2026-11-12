@@ -1,0 +1,34 @@
+# Publishes the portable build to GitHub Pages. This only runs when someone
+# starts it by hand from the Actions tab; nothing is published automatically.
+# Before the first run: Settings > Pages > Build and deployment > Source:
+# "GitHub Actions". The existing site at the production address is separate
+# and is not changed by this workflow.
+name: Publish portable build to GitHub Pages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/*.test.mjs
+      - run: node scripts/build-portable.mjs build/portable --lean
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/portable
+      - id: deployment
+        uses: actions/deploy-pages@v4
