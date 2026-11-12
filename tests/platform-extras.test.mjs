@@ -11,7 +11,7 @@ test('optional extras come after the authored course, so saved ids and positions
     const level=getLevel(meta.id),goal=level.entities.findIndex(e=>e.type==='goal');
     assert.ok(goal>0,meta.id);
     assert.ok(level.entities.slice(0,goal+1).every(e=>AUTHORED.has(e.type)),`${meta.id}: authored entities stay first`);
-    assert.ok(level.entities.slice(goal+1).every(e=>['balloon','vent','bone'].includes(e.type)),`${meta.id}: only extras follow the goal`);
+    assert.ok(level.entities.slice(goal+1).every(e=>['balloon','vent','bone','marker'].includes(e.type)),`${meta.id}: only extras follow the goal`);
     assert.deepEqual(level.entities.map(e=>e.id),level.entities.map((_,i)=>`e${i+1}`),`${meta.id}: ids stay sequential`);
     assert.ok(level.entities.some(e=>e.type==='balloon'),`${meta.id} has an air route`);
     for(const vent of level.entities.filter(e=>e.type==='vent')){
@@ -112,4 +112,79 @@ test('landing reports impact for feedback and dropping into a gap splashes once'
   assert.ok(land.speed>200&&land.surface==='ground'&&land.drop===false);
   const zone=run.zones[0];Object.assign(run.player,{x:zone.x+zone.w/2,y:470,vy:100,grounded:false});run._groundId=null;step(run,.5);
   assert.equal(events.filter(e=>e.type==='splash').length,1);assert.equal(events.find(e=>e.type==='splash').kind,'water');
+});
+
+test('a held jump button never clips a bounce, and a low lip is walked up',()=>{
+  const run=new PlatformRun();run.reset({levelId:'river-1'});run.entities=[{id:'foe',type:'enemy',subtype:'patrol',x:300,y:459,w:44,h:42,hp:1,vx:0,left:300,right:300,hurtTime:0,taken:false}];
+  Object.assign(run.player,{x:300,y:420,vy:300,grounded:false,jumpHeld:true});run._groundId=null;
+  for(let i=0;i<40&&!run.stomps;i++)run.update(1/120);
+  assert.equal(run.stomps,1);assert.ok(run.player.vy<-380);run.releaseJump();assert.ok(run.player.vy<-380,'releasing after a stomp keeps the full bounce');
+  const lip=new PlatformRun();lip.reset({levelId:'river-1'});lip.entities=[];
+  lip.platforms=[{id:'low',x:0,y:480,w:400,h:120,type:'ground',oneWay:false,active:true},{id:'high',x:400,y:456,w:600,h:144,type:'ground',oneWay:false,active:true},{id:'wall',x:1000,y:380,w:200,h:220,type:'ground',oneWay:false,active:true}];
+  lip.width=1400;Object.assign(lip.player,{x:300,y:480,grounded:true});lip._groundId='low';lip.move(1);step(lip,1.2);
+  assert.equal(lip.player.y,456);assert.ok(lip.player.x>500);assert.equal(lip.player.grounded,true);
+  step(lip,3);assert.ok(lip.player.x<=1000-24+.5,'a real wall still stops the buddy');assert.equal(lip.player.y,456);
+});
+
+test('trail markers move the respawn point forward without healing or counting as checkpoints',()=>{
+  const events=[],run=new PlatformRun({onEvent:e=>events.push(e)});run.reset({levelId:'river-2'});
+  const s=run.level.sectionShapes[1],marker=run.entities.find(e=>e.type==='marker'&&e.x===s.x+500);assert.ok(marker);
+  run.hearts=2;Object.assign(run.player,{x:marker.x,y:s.floorY,grounded:true});run._groundId=run.platforms.find(p=>p.type==='ground'&&p.x===s.x).id;step(run,.05);
+  assert.equal(marker.active,true);assert.equal(run.checkpoints,0);assert.equal(run.hearts,2);assert.equal(run.checkpoint.x,marker.spawnX);
+  assert.equal(events.filter(e=>e.type==='marker').length,1);
+  run.entities=run.entities.filter(e=>e.type!=='vent');
+  Object.assign(run.player,{x:s.x+570+s.gap/2,y:720,grounded:false});run._groundId=null;step(run,.05);
+  assert.equal(run.hits,1);assert.equal(run.player.x,marker.spawnX);assert.equal(run.player.y,s.floorY);
+  // An earlier marker never pulls the respawn point backward.
+  const earlier=run.entities.find(e=>e.type==='marker'&&e.x<marker.x);Object.assign(run.player,{x:earlier.x,y:480});step(run,.05);
+  assert.equal(run.checkpoint.x,marker.spawnX);
+  const restored=new PlatformRun();restored.reset({levelId:'river-2',checkpoint:run.snapshot()});assert.equal(restored.checkpoint.x,marker.spawnX);
+});
+
+test('long air chains and secret stashes add Gold Rush time without changing the 30x ceiling',()=>{
+  const run=new PlatformRun();run.reset({levelId:'river-1'});
+  for(let i=0;i<4;i++){const b={id:`b${i}`,type:'balloon',x:300,y:330,w:56,h:50,taken:false,reward:1};run.entities.push(b);Object.assign(run.player,{x:300,y:296,vy:200,grounded:false});run._groundId=null;step(run,.05);assert.equal(b.taken,true);}
+  assert.equal(run.bestStompChain,4);assert.ok(run.goldRushTime>2.5&&run.goldRushTime<=3);
+  for(let i=0;i<30;i++)run._goldRush(5);assert.ok(run.goldRushTime<=12);
+  for(let i=0;i<40;i++)run._collect({type:'bone',x:0,y:0,taken:false});run.charge=100;run.power();
+  assert.equal(run.totalMultiplier,30);assert.equal(run.result().bestMultiplier,30);
+});
+
+test('bandit habits keep ids and spots, stay stompable, and the first levels stay gentle',()=>{
+  for(const id of ['river-1','river-2','river-3','river-4'])assert.ok(getLevel(id).entities.filter(e=>e.type==='enemy').every(e=>['patrol','boss'].includes(e.subtype)),id);
+  const kinds=new Set();
+  for(const meta of LEVELS){
+    const level=getLevel(meta.id);
+    for(const e of level.entities.filter(e=>e.type==='enemy')){kinds.add(e.subtype);assert.ok(['patrol','hopper','roller','floater','boss'].includes(e.subtype));assert.ok(e.left<e.right&&e.hp>=1);if(e.subtype!=='patrol'&&e.subtype!=='boss')assert.ok(Number.isFinite(e.baseY)&&Number.isFinite(e.phase));}
+  }
+  assert.deepEqual([...kinds].sort(),['boss','floater','hopper','patrol','roller']);
+  for(const subtype of ['hopper','floater','roller']){
+    const run=new PlatformRun();run.reset({levelId:'river-1'});
+    const foe={id:'foe',type:'enemy',subtype,x:600,y:459,baseY:459,phase:0,w:44,h:42,hp:1,vx:60,left:500,right:700,hurtTime:0,taken:false};run.entities=[foe];
+    let low=foe.y,high=foe.y;Object.assign(run.player,{x:200,y:480});for(let i=0;i<480;i++){run.update(1/120);low=Math.max(low,foe.y);high=Math.min(high,foe.y);assert.ok(foe.x>=500&&foe.x<=700);}
+    if(subtype==='roller')assert.equal(high,459);else assert.ok(low-high>60,`${subtype} moves through the air`);
+    Object.assign(run.player,{x:foe.x,y:foe.y-foe.h/2-6,vy:260,grounded:false});run._groundId=null;step(run,.05);
+    assert.equal(foe.taken,true,`${subtype} can be stomped`);assert.equal(run.hits,0);
+  }
+});
+
+test('a remix reshuffles climbs, raised sections, and bandits while every goal stays reachable',()=>{
+  const signature=level=>level.sectionShapes.map(s=>`${s.shape[0]}${s.floorY}`).join('')+'|'+level.entities.filter(e=>e.type==='enemy').map(e=>Math.round(e.x)).join(',');
+  const base=signature(getLevel('canyon-2')),seen=new Set();
+  for(let seed=1;seed<=12;seed++)seen.add(signature(getLevel('canyon-2',{remix:true,seed})));
+  assert.ok(seen.size>=8,'different seeds give different courses');assert.ok(!seen.has(base)||seen.size>8);
+  assert.equal(signature(getLevel('canyon-2')),base,'the authored course never changes');
+  for(const meta of LEVELS)for(const seed of [3,77,4242]){
+    const level=getLevel(meta.id,{remix:true,seed});
+    assert.equal(level.entities.filter(e=>e.type==='gold').length,3);assert.equal(level.entities.filter(e=>e.type==='key').length,2);
+    for(const phase of [-1,1]){
+      const surfaces=level.platforms.filter(p=>p.type!=='block').map(p=>({...p,x:p.type==='moving'?p.originX+(p.axis==='x'?phase*p.range:0):p.x,y:p.type==='moving'?p.originY+(p.axis==='y'?phase*p.range:0):p.y}));
+      const visited=new Set([surfaces[0].id]);let changed=true;
+      while(changed){changed=false;for(const a of surfaces){if(!visited.has(a.id))continue;for(const b of surfaces){if(visited.has(b.id))continue;const delta=b.y-a.y,d=610**2+2*1750*delta;if(d<0)continue;const flight=(610+Math.sqrt(d))/1750,gap=Math.max(0,b.x-a.x-a.w,a.x-b.x-b.w);if(gap+20<=275*flight){visited.add(b.id);changed=true;}}}}
+      for(const entity of level.entities.filter(e=>['gold','key','checkpoint','goal'].includes(e.type)||(e.type==='chest'&&e.secret))){
+        const supports=surfaces.filter(p=>entity.x>=p.x-20&&entity.x<=p.x+p.w+20&&p.y>=entity.y&&p.y-entity.y<=100);
+        assert.ok(supports.some(p=>visited.has(p.id)),`${meta.id} remix ${seed}/${phase}: ${entity.type} must be reachable`);
+      }
+    }
+  }
 });

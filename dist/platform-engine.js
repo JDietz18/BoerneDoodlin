@@ -76,19 +76,25 @@ export class PlatformRun {
   update(dt){
     if(this.mode!=='running')return;let remaining=clamp(dt,0,.1);
     while(remaining>1e-8&&this.mode==='running'){const step=Math.min(1/120,remaining);remaining-=step;this._step(step);}
+    if(this.mode==='running')this._updateInteraction();
   }
   _step(dt){
     this.time+=dt;
     for(const key of ['invincible','powerTime','magnetTime','feverTime','goldRushTime','_feverCooldown','comboTime','_jumpBuffer','_springCooldown','_ventCooldown'])this[key]=Math.max(0,this[key]-dt);
     if(!this.comboTime&&this.combo){this.combo=0;this.multiplier=1;}
     this._gainCharge(dt*1.4);if(this.mode!=='running')return;
-    this._stepPlatforms(dt);const p=this.player,oldX=p.x,oldFeet=p.y,wasGrounded=p.grounded;
+    this._stepPlatforms(dt);const p=this.player,oldX=p.x,wasGrounded=p.grounded;let oldFeet=p.y;
     const support=this.platforms.find(s=>s.id===this._groundId&&s.active!==false&&overlapX(p,s)&&Math.abs(p.y-s.y)<4);
     if(p.grounded&&!support){p.grounded=false;this._groundId=null;this._coyote=.12;}
     this._coyote=Math.max(0,this._coyote-dt);if(!p.grounded&&this._coyote===0&&p.jumps===0)p.jumps=1;
     const maxSpeed=this.speed*(this.powerTime>0?1.12:1);p.vx=approach(p.vx,this._move*maxSpeed,(p.grounded?2100:1450)*dt);
     p.x=clamp(p.x+p.vx*dt,W/2,this.width-W/2);p.moving=Math.abs(p.vx)>8?Math.sign(p.vx):0;if(this._move)p.facing=this._move;
-    for(const s of this.platforms){if(s.active===false||s.oneWay||p.y<=s.y+2||p.y-H>=s.y+s.h-2||!overlapX(p,s))continue;if(oldX+W/2<=s.x+2){p.x=s.x-W/2;p.vx=0;}else if(oldX-W/2>=s.x+s.w-2){p.x=s.x+s.w+W/2;p.vx=0;}}
+    for(const s of this.platforms){
+      if(s.active===false||s.oneWay||p.y<=s.y+2||p.y-H>=s.y+s.h-2||!overlapX(p,s))continue;
+      // A low lip (the 24 px rise into a raised section) is walked up, not bumped into.
+      if(wasGrounded&&s.type==='ground'&&p.y-s.y<=28){p.y=s.y;oldFeet=s.y;continue;}
+      if(oldX+W/2<=s.x+2){p.x=s.x-W/2;p.vx=0;}else if(oldX-W/2>=s.x+s.w-2){p.x=s.x+s.w+W/2;p.vx=0;}
+    }
     p.vy=Math.min(1100,p.vy+GRAVITY*dt);p.y+=p.vy*dt;p.grounded=false;this._groundId=null;
     if(p.vy>=0){
       let landing=null;for(const s of this.platforms)if(s.active!==false&&overlapX(p,s,2)&&oldFeet<=s.y+5&&p.y>=s.y&&(!landing||s.y<landing.y))landing=s;
@@ -103,10 +109,11 @@ export class PlatformRun {
       if(e.taken)continue;
       if(e.type==='enemy'){this._enemyStep(e,dt,oldFeet);}
       else if(e.type==='spring'){
-        if(this._springCooldown===0&&Math.abs(e.x-p.x)<W/2+e.w/2&&p.vy>=0&&p.y>=e.y-e.h/2&&p.y<=e.y+e.h/2+8){p.vy=-860*(this.charms.springBoost?1.2:1);p.grounded=false;p.jumps=1;this._groundId=null;this._coyote=0;this._springCooldown=.3;this.springs++;this.emit('spring',{x:e.x,y:e.y});}
+        if(this._springCooldown===0&&Math.abs(e.x-p.x)<W/2+e.w/2&&p.vy>=0&&p.y>=e.y-e.h/2&&p.y<=e.y+e.h/2+8){p.vy=-860*(this.charms.springBoost?1.2:1);p.jumpHeld=false;p.grounded=false;p.jumps=1;this._groundId=null;this._coyote=0;this._springCooldown=.3;this.springs++;this.emit('spring',{x:e.x,y:e.y});}
       }else if(e.type==='checkpoint'){
         if(!e.active&&Math.abs(e.x-p.x)<48&&Math.abs(e.y-(p.y-H/2))<70){e.active=true;this.checkpoints++;this.checkpoint={id:e.id,x:e.spawnX,y:e.spawnY};this.score+=50;this.hearts=Math.min(this.maxHearts,this.hearts+1);this.emit('checkpoint',{x:e.x,y:e.y,checkpoints:this.checkpoints});}
       }else if(e.type==='goal'){if(Math.abs(e.x-p.x)<55&&Math.abs(e.y-(p.y-H/2))<110)this._tryGoal(e);}
+      else if(e.type==='marker'){if(!e.active&&p.x>=e.x-30&&p.x<=e.x+160&&e.spawnX>this.checkpoint.x){e.active=true;this.checkpoint={id:e.id,x:e.spawnX,y:e.spawnY};this.emit('marker',{x:e.x,y:e.y});}}
       else if(e.type==='balloon')this._balloonStep(e,oldFeet);
       else if(e.type==='vent')this._ventStep(e);
       else if(e.type==='chest'){if(e.secret&&!e.revealed&&Math.abs(e.x-p.x)<250&&Math.abs(e.y-(p.y-H/2))<145){e.revealed=true;this.emit('secret-found',{x:e.x,y:e.y});}}
@@ -114,7 +121,6 @@ export class PlatformRun {
       if(this.mode!=='running')return;
     }
     this.farthest=Math.max(this.farthest,p.x);this.distance=Math.max(0,this.farthest-this.level.spawn.x);this.camera.x=clamp(p.x-340,0,this.width-960);
-    this._updateInteraction();
   }
   _hitBlock(s){
     if(s.type!=='block'||s.used)return;s.used=true;this.blocks++;const e=this.entities.find(e=>e.platformId===s.id);if(e)e.used=true;
@@ -123,11 +129,19 @@ export class PlatformRun {
     this._gainCharge(6);this.emit('block',{x:s.x+s.w/2,y:s.y,blocks:this.blocks});
   }
   _enemyStep(e,dt,oldFeet){
-    const p=this.player;e.hurtTime=Math.max(0,(e.hurtTime||0)-dt);e.x+=e.vx*dt;
+    const p=this.player;e.hurtTime=Math.max(0,(e.hurtTime||0)-dt);
+    // Hoppers leap along, floaters bob through the air, rollers are simply quick.
+    if(e.subtype==='hopper'){const t=(this.time+(e.phase||0))%1.7,air=t<.62;e.y=e.baseY-(air?Math.sin(Math.PI*t/.62)*74:0);e.airborne=air;e.x+=(air?e.vx*1.5:0)*dt;}
+    else if(e.subtype==='boss'){
+      // A stomped boss leaps away in an arc and comes back a little faster each time.
+      if(e.baseY===undefined)e.baseY=e.y;const leaping=e.hurtTime>0;
+      e.y=e.baseY-(leaping?Math.sin(Math.PI*(1-e.hurtTime/.8))*130:0);e.airborne=leaping;e.x+=e.vx*(leaping?2.4:1+((e.maxHp||3)-e.hp)*.3)*dt;
+    }
+    else{if(e.subtype==='floater')e.y=e.baseY-78+Math.sin(this.time*1.7+(e.phase||0))*44;e.x+=e.vx*dt;}
     if(e.x<e.left){e.x=e.left;e.vx=Math.abs(e.vx);}if(e.x>e.right){e.x=e.right;e.vx=-Math.abs(e.vx);}
     const top=e.y-e.h/2,bottom=e.y+e.h/2;
     if(Math.abs(e.x-p.x)>W*.42+e.w*.43||p.y<=top||p.y-H>=bottom)return;
-    if(p.vy>0&&oldFeet<=top+18){p.y=top-2;p.vy=this.charms.stompBounce?-560:-420;p.grounded=false;p.jumps=1;this._groundId=null;this._coyote=0;if(!(e.hurtTime>0)){this.airStomps++;this.bestStompChain=Math.max(this.bestStompChain,this.airStomps);}this._stomp(e,false);}
+    if(p.vy>0&&oldFeet<=top+18){p.y=top-2;p.vy=this.charms.stompBounce?-560:-420;p.jumpHeld=false;p.grounded=false;p.jumps=1;this._groundId=null;this._coyote=0;if(!(e.hurtTime>0)){this.airStomps++;this.bestStompChain=Math.max(this.bestStompChain,this.airStomps);if(this.airStomps===4||(this.airStomps>4&&this.airStomps%2===0))this._goldRush(this.airStomps===4?3:2,'air');}this._stomp(e,false);}
     else if(this.powerTime>0)this._stomp(e,true);
     else this._damage('enemy',e);
   }
@@ -166,16 +180,18 @@ export class PlatformRun {
     else if(e.type==='heart'){const healed=this.hearts<this.maxHearts;this.hearts=Math.min(this.maxHearts,this.hearts+1);value=healed?25:80;this.emit('heal',{hearts:this.hearts,healed});}
     this.score+=value;this.emit('collect',{kind:e.type,value,x:e.x,y:e.y,combo:this.combo,multiplier:this.multiplier,totalMultiplier:this.totalMultiplier});
   }
+  // Gold Rush is always the same 2x layer; this only adds time to it.
+  _goldRush(seconds,source='gold'){this.goldRushTime=Math.min(12+this.charms.goldDuration*2,this.goldRushTime+seconds);this._recordMultiplier();this.emit('gold-rush',{duration:this.goldRushTime,totalMultiplier:this.totalMultiplier,source});}
   // Treat balloons are one-way bounce pads: landing on one from above pops it,
   // pays its treats, and keeps an air chain going. They never block or hurt.
   _balloonStep(e,oldFeet){
     const p=this.player,top=e.y-e.h/2;
     if(p.vy<=0||Math.abs(e.x-p.x)>W*.5+e.w*.45||oldFeet>top+10||p.y<top)return;
-    p.y=top-1;p.vy=this.charms.stompBounce?-640:-560;p.grounded=false;p.jumps=1;p.drop=false;this._groundId=null;this._coyote=0;
+    p.y=top-1;p.vy=this.charms.stompBounce?-640:-560;p.jumpHeld=false;p.grounded=false;p.jumps=1;p.drop=false;this._groundId=null;this._coyote=0;
     e.taken=true;this.pops++;this.airStomps++;this.bestStompChain=Math.max(this.bestStompChain,this.airStomps);
     const before=this.score,bonus=25*Math.min(6,this.airStomps-1);
     for(let i=0;i<(e.reward||2);i++)this._collect({type:'bone',x:e.x,y:e.y,taken:false});
-    this.score+=bonus;this._gainCharge(4);
+    this.score+=bonus;this._gainCharge(4);if(this.airStomps===4||(this.airStomps>4&&this.airStomps%2===0))this._goldRush(this.airStomps===4?3:2,'air');
     this.emit('pop',{x:e.x,y:e.y,chain:this.airStomps,value:this.score-before,skin:e.skin||0});
   }
   // Vents erupt on a steady rhythm inside some gaps. One that is erupting
@@ -183,7 +199,7 @@ export class PlatformRun {
   _ventStep(e){
     const p=this.player,phase=((this.time+(e.phase||0))%e.period)/e.period;e.erupting=phase<e.duty;e.cycle=phase;
     if(!e.erupting||this._ventCooldown>0||p.y<486||Math.abs(p.x-e.x)>e.w/2+W*.3)return;
-    p.vy=-(e.lift||880);p.grounded=false;p.jumps=1;p.drop=false;this._groundId=null;this._coyote=0;this._ventCooldown=.6;this._wet=false;this.vents++;
+    p.vy=-(e.lift||880);p.jumpHeld=false;p.grounded=false;p.jumps=1;p.drop=false;this._groundId=null;this._coyote=0;this._ventCooldown=.6;this._wet=false;this.vents++;
     this.emit('vent',{x:e.x,y:Math.min(p.y,520),skin:e.skin||0});
   }
   // A frenzy starts a short snack shower around the player.
@@ -207,7 +223,7 @@ export class PlatformRun {
     if(e.type==='chest'){
       e.taken=true;e.revealed=true;this.chests++;const before=this.score;
       for(let i=0;i<(e.reward||8);i++)this._collect({type:'bone',x:e.x,y:e.y,taken:false});
-      if(e.secret){this.secrets++;this.score+=150;this.emit('secret',{x:e.x,y:e.y,secrets:this.secrets});}
+      if(e.secret){this.secrets++;this.score+=150;this._goldRush(5,'secret');this.emit('secret',{x:e.x,y:e.y,secrets:this.secrets});}
       this.emit('chest',{x:e.x,y:e.y,value:this.score-before,secret:!!e.secret});this._updateInteraction();return true;
     }
     return false;

@@ -32,6 +32,9 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
   const entity=(type,x,y,w=30,h=30,extra={})=>{const e={id:`e${++eId}`,type,x,y,w,h,taken:false,...extra};entities.push(e);return e;};
   const coinLine=(x,y,count=5,spacing=62)=>{for(let i=0;i<count;i++)entity('bone',x+i*spacing,y,26,24);};
   const sections=10+(meta.index%3),span=900,start=640,finishStart=start+sections*span,width=finishStart+1500;
+  // A remix really reshuffles: which climb each section uses, which sections
+  // are raised, and where the bandits wait. The authored course never does.
+  const shapeShift=remix?Math.floor(random()*3):0,riseShift=remix?Math.floor(random()*4):0;
   const goldSections=[1,Math.floor(sections/2),sections-2],keySections=[3,sections-3],secretSection=Math.floor(sections/2)+1;
   platform(0,480,640,120,'ground');coinLine(170,442,6,65);
   entity('sign',150,390,40,60,{text:'Move freely. Hold jump for height. Jump again in the air.'});
@@ -39,13 +42,13 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
   platform(360,412,150);coinLine(390,376,2,64);
   for(let section=0;section<sections;section++){
     const x=start+section*span;
-    const elevated=section>0&&(section+meta.index+meta.worldIndex)%4===2;
+    const elevated=section>0&&(section+meta.index+meta.worldIndex+riseShift)%4===2;
     const floorY=elevated?456:480;
     const gap=126+Math.floor(random()*45)+Math.min(15,meta.worldIndex*3);
     platform(x,floorY,570,600-floorY,'ground');
     platform(x+570+gap,480,span-570-gap,120,'ground');
     zones.push({x:x+570,y:480,w:gap,h:120,type:meta.worldIndex===2?'ravine':'water'});
-    const shape=(section+meta.index+meta.worldIndex)%3;
+    const shape=(section+meta.index+meta.worldIndex+shapeShift+(remix?Math.floor(random()*2):0))%3;
     sectionShapes.push({index:section,shape:['canopy-steps','spring-bridge','moving-terraces'][shape],x,width:span,floorY,gap,bridged:section%4===3});
     let first;
     if(shape===0){
@@ -77,7 +80,7 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
       coinLine(x+535,floorY-357,2,45);
     }
     if(section===2||section===sections-2)entity('chest',x+820,floorY-103,44,42,{secret:false,reward:8});
-    if(section>0&&(section+meta.worldIndex)%2===0){
+    if(section>0&&(remix?random()<.6:(section+meta.worldIndex)%2===0)){
       const size=42;entity('enemy',x+390,floorY-size/2,44,size,{subtype:'patrol',hp:1,vx:52+meta.worldIndex*8,left:x+245,right:x+535,groundY:floorY,hurtTime:0});
     }
     if(section%3===1||(meta.worldIndex===4&&section%2===0))entity('spring',x+840,470,46,20,{groundY:480});
@@ -90,7 +93,7 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
   platform(finishStart,480,1500,120,'ground');coinLine(finishStart+70,442,5,75);
   entity('checkpoint',finishStart+100,438,34,84,{spawnX:finishStart+130,spawnY:480,active:false});
   if(meta.boss){
-    entity('enemy',finishStart+680,432,108,96,{subtype:'boss',name:['Paddle Bandit','Acorn Guardian','Canyon Crumbler','Midnight Muncher','Welcome-Home Rumbler'][meta.worldIndex],hp:3,maxHp:3,vx:65+meta.worldIndex*7,left:finishStart+450,right:finishStart+1030,groundY:480,hurtTime:0});
+    entity('enemy',finishStart+680,432,108,96,{subtype:'boss',name:['Paddle Bandit','Acorn Guardian','Canyon Crumbler','Midnight Muncher','Welcome-Home Rumbler'][meta.worldIndex],hp:3,maxHp:3,vx:65+meta.worldIndex*7,left:finishStart+450,right:finishStart+1030,groundY:480,baseY:432,hurtTime:0});
     platform(finishStart+360,398,150);platform(finishStart+1040,398,150);
     entity('sign',finishStart+225,390,40,60,{text:'Three stomps from above—or a well-timed power—settle the snack dispute.'});
   }
@@ -98,6 +101,13 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
   // Optional extras come last and use their own random stream, so every
   // authored platform and entity above keeps its id, position, and order.
   const extra=randomFor((layoutSeed^hash(meta.id+':extras'))>>>0),skin=meta.worldIndex;
+  // Some authored bandits take on a livelier habit. Their ids and spots stay put.
+  const habits=[meta.index>=4?['hopper']:[],['hopper'],['roller','hopper'],['floater','hopper'],['roller','floater','hopper']][meta.worldIndex];
+  for(const e of entities){
+    if(e.type!=='enemy'||e.subtype!=='patrol')continue;const roll=extra(),pick=extra(),phase=extra();
+    if(!habits.length||roll>=.3+meta.index*.05+meta.worldIndex*.03)continue;
+    e.subtype=habits[Math.floor(pick*habits.length)];e.baseY=e.y;e.phase=phase*6;if(e.subtype==='roller')e.vx*=1.9;
+  }
   const balloon=(x,top,reward=2)=>entity('balloon',x,top+25,56,50,{skin,reward});
   let skyways=0;
   for(const s of sectionShapes){
@@ -106,6 +116,8 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
     if(next&&s.index>=1&&(roll<.34+meta.worldIndex*.05||(s.index===sections-3&&!skyways))){
       skyways++;for(let i=0;i<4;i++)balloon(s.x+742+i*168,(s.floorY-286)+(next.floorY-s.floorY)*(i/3)+(i%2?-10:0));
     }
+    // A quiet marker before each gap: a fall returns here, not far back.
+    entity('marker',s.x+500,s.floorY-18,24,36,{spawnX:s.x+500,spawnY:s.floorY,active:false});
     // Vents lift anyone who drops into the gap while they are erupting.
     if(!s.bridged&&s.index>=(meta.globalIndex===0?5:1)&&ventRoll<.36+meta.worldIndex*.04)
       entity('vent',s.x+570+s.gap/2,540,Math.min(96,s.gap-36),120,{skin,period:3.4+phase*1.1,duty:.42,phase:phase*5,lift:880});
