@@ -123,11 +123,11 @@ Sound is opt-in. Assist and reduced-motion preferences persist in the journey. T
 
 The score stack is the product of chain (up to 5×), frenzy (2×), Gold Rush (2×), and Griffin's power (1.5×), up to 30×. Records keep fractional multipliers such as 7.5×. The meter shows all four layers at all times; the frenzy bar rests while a frenzy is cooling down.
 
-## Offline release v22
+## Offline release v23
 
-The app remains on its existing URL and keeps manifest ID `/`, scope `/`, and start URL `/?source=homescreen`. Its display name is Doodle Onward. The approved Griffin icon and all four character atlases use `?v=22`.
+The app remains on its existing URL and keeps manifest ID `/`, scope `/`, and start URL `/?source=homescreen`. Its display name is Doodle Onward. The approved Griffin icon and all four character atlases use `?v=23`.
 
-The worker cache is `doodle-onward-journey-v22`. The release bundle includes twenty active JavaScript modules, four stylesheets, the manifest, approved character art, shared scenery, icon, and font. Module queries and image request queries must match the precache exactly, and the install step asks the network for fresh copies so a phone never mixes an old module with a new page. `tests/release.test.mjs` fails if any file carries a different version.
+The worker cache is `doodle-onward-journey-v23`. The release bundle includes twenty active JavaScript modules, four stylesheets, the manifest, approved character art, shared scenery, icon, and font. Module queries and image request queries must match the precache exactly, and the install step asks the network for fresh copies so a phone never mixes an old module with a new page. `tests/release.test.mjs` fails if any file carries a different version.
 
 Navigation uses the network when available and falls back to the cached entry offline. Listed same-origin assets use the release cache. Arbitrary, non-GET, and cross-origin requests are not intercepted. Activation removes only obsolete `doodle-onward-`, `boerne-doodlin-`, and `griffin-snack-patrol-` caches.
 

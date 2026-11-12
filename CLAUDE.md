@@ -28,7 +28,7 @@ usual way to check a change; look at the screenshots, do not just read numbers.
 | `dist/game.js` | Controller: screens, run lifecycle, results, panels, saves |
 | `dist/controls.js` | Gesture input. The play field is the controller |
 | `dist/hud.js`, `dist/play.css` | In-run HUD, bonus-stack meter, phone layout |
-| `dist/camp.css` | Camp screen look: sticker-style cards and the animated mini-game shelf |
+| `dist/camp.css` | Camp screen and panel look: sticker-style cards and the animated mini-game shelf |
 | `dist/fx.js`, `dist/haptics.js` | Shared game feel: particles, shake, hit-stop, popups, taps |
 | `dist/platform-engine.js`, `dist/world-levels.js`, `dist/platform-renderer.js` | The 30-level platform adventure |
 | `dist/scout-engine.js`, `dist/scout-view.js` | Trail Scout |
