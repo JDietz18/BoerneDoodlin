@@ -1,5 +1,6 @@
 import {CHARACTER_ART} from './characters.js?v=20';
 import {WORLD} from './adventure-engine.js?v=20';
+import {Juice} from './fx.js?v=20';
 
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const TAU=Math.PI*2;
@@ -40,15 +41,25 @@ function bone(c,x,y,w=30,color='#fff6d8'){
 export class Renderer {
   constructor(canvas){
     this.canvas=canvas;this.ctx=canvas.getContext('2d');this.sprites={};this.particles=[];this.labels=[];this.shake=0;this.time=0;this.assetsReady=false;this.reducedMotion=false;
+    // Shared game-feel state for whichever activity is on screen, and the
+    // screen edges currently covered by the HUD and touch controls (CSS px).
+    this.juice=new Juice();this.insets={top:0,right:0,bottom:0,left:0};this.props=null;
     this.resize();new ResizeObserver(()=>this.resize()).observe(canvas);
   }
   resize(){const r=this.canvas.getBoundingClientRect();this.width=Math.max(1,r.width);this.height=Math.max(1,r.height);const dpr=Math.min(2,window.devicePixelRatio||1);this.canvas.width=Math.round(this.width*dpr);this.canvas.height=Math.round(this.height*dpr);this.dpr=dpr;}
   async load(){
     await Promise.all(Object.entries(CHARACTER_ART).map(async([id,art])=>{const im=cleanImage(await imageLoad(art.src+'?v=20'));const regions=art.regions||(id==='mittens'?[[0,0,.53,.445],[.53,0,1,.445],[0,.445,.52,1],[.52,.445,1,1]]:undefined);const f=frames(im,2,2,regions);this.sprites[id]={image:im,frames:f,runWidth:Math.max(...f.slice(0,3).map(a=>a.w))};}));
-    const decorative=await Promise.allSettled([imageLoad('/assets/route-biomes.jpg'),imageLoad('/assets/family-rv.png')]);
+    const decorative=await Promise.allSettled([imageLoad('/assets/route-biomes.jpg'),imageLoad('/assets/family-rv.png'),imageLoad('/assets/griffin-atlas.png')]);
     if(decorative[0].status==='fulfilled')this.biomes=decorative[0].value;
     if(decorative[1].status==='fulfilled'){this.rv=cleanImage(decorative[1].value);this.rvFrame=frames(this.rv,1,1)[0];}
+    // Painted props only. Cells 0-3 of this sheet hold retired dog art and are never read.
+    if(decorative[2].status==='fulfilled'){const sheet=cleanImage(decorative[2].value),cells=frames(sheet,3,3);this.props={image:sheet,log:cells[4],can:cells[5],biscuit:cells[6],chicken:cells[7],ball:cells[8]};}
     this.assetsReady=true;
+  }
+  // Draws a painted prop centred on x,y at the given width. Returns false when the sheet is unavailable.
+  prop(c,name,x,y,width,{rotate=0,alpha=1}={}){
+    const f=this.props?.[name];if(!f||name==='image')return false;const scale=width/f.w;
+    c.save();c.globalAlpha*=alpha;c.translate(x,y);if(rotate)c.rotate(rotate);c.drawImage(this.props.image,f.x,f.y,f.w,f.h,-width/2,-f.h*scale/2,width,f.h*scale);c.restore();return true;
   }
   character(c,id,pose,x,y,width,{alpha=1,rotate=0,squash=1,portrait=false}={}){
     const a=this.sprites[id];if(!a)return;const f=a.frames[pose%4],scale=width/(portrait?f.w:a.runWidth);

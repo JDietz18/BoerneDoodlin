@@ -62,7 +62,7 @@ function startRun(selection={mode:'platform',levelId:continueLevel().id},{fresh=
  if(!ready)return;closePanel();gestureAudio();clearInputs();
  if(selection.mode==='platform'&&fresh&&selection.levelId&&!selection.dailyDate&&!selection.remix)journey.clearCheckpoint(selection.levelId);
  const config=journey.getRunConfig({...selection,worldIndex:selection.worldIndex??journey.state.selectedWorld});if(fresh||config.dailyDate||config.remix)config.checkpoint=null;
- currentConfig=config;finishing=false;lastResult=null;lastReward=null;lastHud=-1;lastCheckpointTime=0;renderer.resetCamera();renderer.particles=[];renderer.labels=[];celebrations.clear();clearTimeout(calloutTimer);$('run-callout').classList.remove('visible');$('run-callout').textContent='';
+ currentConfig=config;finishing=false;lastResult=null;lastReward=null;lastHud=-1;lastCheckpointTime=0;renderer.resetCamera();renderer.particles=[];renderer.labels=[];renderer.juice.clear();rallyRenderer?.juice?.clear();celebrations.clear();clearTimeout(calloutTimer);$('run-callout').classList.remove('visible');$('run-callout').textContent='';
  if(config.mode==='memory'){
   memoryGame?.destroy();memoryGame=new MemoryGame($('memory-board'),{onEvent:onGameEvent,onFinish:finishGame});run=memoryGame;run.reset(config);
  }else {run=engines[config.mode];run.reset(config);}
@@ -102,7 +102,8 @@ function renderResult(){
 }
 function onGameEvent(e){
  if(!run||finishing)return;
- if(currentConfig?.mode==='platform')renderer.addAdventureEvent(e);else if(currentConfig?.mode==='snack')renderer.addEvent(e);
+ const mode=currentConfig?.mode;
+ if(mode==='platform')renderer.addAdventureEvent(e,run);else if(mode==='snack')renderer.addEvent(e,run);else if(mode==='scout')renderer.addScoutEvent?.(e,run);else if(mode==='rally')rallyRenderer?.addEvent?.(e,run);
  const soundAlias={stomp:'spring',block:'collect',key:'unlock',chest:'unlock',secret:'mission',checkpoint:'unlock',fever:'combo','boss-defeated':'finish',pair:'collect',match:'collect',mismatch:'hit',dodge:'near-miss'};
  if(!['start','pause','resume','prompt','land','step','hint','won','lost','dialog','locked','restore'].includes(e.type))audio.play(soundAlias[e.type]||e.type,{...e,gold:e.kind==='gold'});
  if(e.type==='won'||e.type==='lost'){finishGame(e.result||run.result());return;}
@@ -230,8 +231,10 @@ function frame(now){
  if(ready){
   if(screen==='home')renderer.drawHome({characterId:journey.state.selectedCharacter,time:clock,theme:journey.state.selectedWorld,reducedMotion:reduced()});
   else if(run){
-   if(screen==='run'){run.update(dt);if(screen==='run'&&run.runMode==='platform'&&run.time-lastCheckpointTime>10){lastCheckpointTime=run.time;saveCheckpoint();}}
-   const opts={time:clock,dt:screen==='run'?dt:0,reducedMotion:reduced()};
+   const view=currentConfig.mode==='rally'?rallyRenderer:renderer,juice=view?.juice;if(juice)juice.reducedMotion=reduced();
+   const simDt=screen==='run'?(juice?juice.step(dt):dt):0;
+   if(screen==='run'){run.update(simDt);if(screen==='run'&&run.runMode==='platform'&&run.time-lastCheckpointTime>10){lastCheckpointTime=run.time;saveCheckpoint();}}
+   const opts={time:clock,dt:screen==='run'?dt:0,simDt,reducedMotion:reduced(),insets:view?.insets};
    if(currentConfig.mode==='platform')renderer.drawPlatform(run,opts);else if(currentConfig.mode==='scout')renderer.drawScout(run,opts);else if(currentConfig.mode==='snack')renderer.drawStorm(run,opts);else if(currentConfig.mode==='rally')rallyRenderer?.draw(run,opts);
    updateHud();
   }
@@ -239,5 +242,7 @@ function frame(now){
  }
  fxContext.setTransform(fxDpr,0,0,fxDpr,0,0);fxContext.clearRect(0,0,fxW,fxH);celebrations.update(dt);celebrations.draw(fxContext,fxW,fxH,{reducedMotion:reduced()});requestAnimationFrame(frame);
 }
+// Test and tuning handle, only with ?debug in the address.
+if(new URLSearchParams(location.search).has('debug'))window.__doodle={get run(){return run;},get config(){return currentConfig;},get screen(){return screen;},get journey(){return journey;},renderer,get rallyRenderer(){return rallyRenderer;},get memoryGame(){return memoryGame;},audio,startRun,pause,resume,home};
 renderHome();syncSettings();resizeEffects();requestAnimationFrame(frame);
 renderer.load().then(()=>{ready=true;renderHome();audio.setScene('menu',journey.state.selectedWorld);persist();announce('Doodle Onward is ready. Choose your adventure buddy, then explore.');}).catch(err=>{$('load-error').hidden=false;$('load-error-text').textContent='We couldn’t load the character artwork. Reconnect and try again.';console.error('Doodle Onward artwork failed to load:',err);});
