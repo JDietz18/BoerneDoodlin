@@ -135,6 +135,24 @@ Register `/sw.js` with `updateViaCache:'none'` on the published site. Local prev
 
 The offline regression executes the actual shared image loader, checks exact requested URLs, walks the active module imports and stylesheet assets, verifies the manifest icon, tests offline navigation and module delivery, and checks safe cache cleanup.
 
+## What the touch-first release changed
+
+Built on the Site version 13 source. Save format, reward rules, level ids, and the 30× stack are unchanged.
+
+- **Controls.** Gestures only on a phone (table above). No pads or buttons are drawn. First-time hints fade once each move has been tried.
+- **HUD.** One glanceable band: hearts, goals, score, a countdown for timed modes, and a stack meter that keeps all four layers on screen. Each new tier (2×, 5×, 10×, 20×, 30×) is announced once on the way up.
+- **Game feel.** `fx.js` gives every view the same bounded particles, popups, shake, hit-stop, and slow motion. `haptics.js` adds taps where the phone allows it.
+- **Platform adventure.** Rebuilt painted view with a look-ahead camera. New optional pieces, all appended after the goal so saved ids never move: treat-balloon skyways, vents in some gaps, trail markers before gaps, and a finish staircase. Bandits can hop, roll, or float; bosses leap away after each stomp. A frenzy starts a short snack shower. Remix reshuffles climbs, raised sections, and bandits.
+- **Trail Scout.** Painted maps with a follow camera and corner map, tap-to-walk, treat trails from chests, a wandering critter, and a hidden golden paw. Walking into something uses it.
+- **RV Rally.** Finger-following steering, a countdown, a different road character per world, ramps, near misses, treat convoys, and a final push.
+- **Snack Storm.** A storm per world with gusts, comets, and bounces, its own stack tiers, and a final countdown.
+- **Camp Pairs.** Streaks, a golden pair, card swaps, and a time bonus.
+- **Sound.** A palette per world and music that leans in as the stack grows.
+- **Saves.** A backup can be copied as text and pasted on another phone. An unfinished mini-game banks what was found when you leave.
+- **Hosting.** `scripts/build-portable.mjs` writes a relative-path copy for subfolder hosts and previews. `dist/` itself still belongs at the site root.
+
+Two small balance changes came with the mini-game work: a Rally treat convoy pays about a third more, and the golden pair in Camp Pairs pays two extra.
+
 ## Verification and publishing
 
 No dependency installation or compilation step is required. Run:
@@ -143,6 +161,21 @@ No dependency installation or compilation step is required. Run:
 node --test tests/*.test.mjs
 ~~~
 
-Journey tests cover all thirty levels, ninety medals, world gates, migration, duplicate receipts, real quest actions, charm effects/configuration, Daily rules, checkpoint isolation, malformed saves, and storage failures. Engine tests and browser QA cover the actual movement, interactions, 3D rendering, cards, audio, responsive layout, and control flow.
+Journey tests cover all thirty levels, ninety medals, world gates, migration, duplicate receipts, real quest actions, charm effects/configuration, Daily rules, checkpoint isolation, malformed saves, and storage failures. Engine tests cover movement, the new platform pieces (every skyway and staircase is crossed by a bot in all 30 levels, with and without Easygoing mode), each mini-game, gestures, the HUD, the offline bundle, and version consistency.
+
+What was checked for v21, in Chromium with an iPhone profile:
+
+- All five activities played with real multi-touch at 390×750, 320×568, 844×390, and 667×375, with no console errors.
+- Chips and pause under a held thumb, repeat flicks, the hint ring, braking, assist buttons by keyboard, and desktop keyboard play.
+- A phone with release 20 installed meeting release 21 on the same address: the save carried over, no old module was mixed in, the old cache was removed, and every activity reopened offline.
+- The portable build inside a host page that wraps it the way a preview does.
+- Platform drawing at about 4 ms a frame with the processor slowed four times.
+
+What has not been checked, and should be before a trip depends on it:
+
+- A real iPhone in Safari and as a Home Screen app. Chromium is not WebKit: touch timing, safe areas, audio unlock, the wake lock, and WebGL in RV Rally all deserve a few minutes on the actual phones.
+- Sound by ear. The cue list is tested; nobody has listened to it.
+- Touch feedback. iPhone has no vibration interface for web pages; the fallback used here is unproven on a device and simply does nothing where it is unsupported.
+- Tilt steering, battery use, and heat over a long session.
 
 Publish the validated `dist/` through the existing Sites source repository and save/deploy workflow. Keep the same project and public audience. The original Griffin reference guide remains the authority for character artwork.
