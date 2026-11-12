@@ -1,4 +1,4 @@
-import {LEVELS,getLevel} from './world-levels.js?v=21';
+import {LEVELS,getLevel} from './world-levels.js?v=22';
 
 export const PLATFORM_WORLD=Object.freeze({width:960,height:600,tile:48,ground:480});
 const W=48,H=64,GRAVITY=1750;

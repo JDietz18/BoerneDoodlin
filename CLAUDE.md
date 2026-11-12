@@ -1,7 +1,7 @@
 # Doodle Onward
 
 A family road-trip game (Grants Pass, Oregon to Boerne, Texas) starring Griffin
-the Bernedoodle with Kevin, Mittens, and Spike. Played mostly on iPhones, passed
+the Bernedoodle with Pumpkin, Mittens, and Spike. Played mostly on iPhones, passed
 around in a moving car. The owner's standing direction: **the most dynamic
 version possible, modern, touch and tap only, no on-screen control interface.**
 
@@ -28,6 +28,7 @@ usual way to check a change; look at the screenshots, do not just read numbers.
 | `dist/game.js` | Controller: screens, run lifecycle, results, panels, saves |
 | `dist/controls.js` | Gesture input. The play field is the controller |
 | `dist/hud.js`, `dist/play.css` | In-run HUD, bonus-stack meter, phone layout |
+| `dist/camp.css` | Camp screen look: sticker-style cards and the animated mini-game shelf |
 | `dist/fx.js`, `dist/haptics.js` | Shared game feel: particles, shake, hit-stop, popups, taps |
 | `dist/platform-engine.js`, `dist/world-levels.js`, `dist/platform-renderer.js` | The 30-level platform adventure |
 | `dist/scout-engine.js`, `dist/scout-view.js` | Trail Scout |
@@ -72,6 +73,10 @@ not loaded by the page.
   `tests/platform-extras.test.mjs` holds each of these against the worst case.
 - **iPhone canvas.** No `shadowBlur` in loops (use cached glow sprites), no
   per-frame gradients or allocations per entity, device pixel ratio capped at 2.
+- **Pumpkin and Kevin.** Pumpkin (princess cat, loud and judgmental) plays in
+  the second buddy slot, whose saved id is still `kevin`: do not rename the id.
+  Kevin is not playable; he stays as the forever guide and asks the quest
+  favors (`GUIDE` in `dist/characters.js`). Mittens is the adventurous panther.
 - **Art and words.** Griffin comes only from `griffin-character-atlas.png`;
   `griffin-atlas.png` supplies props (cells 4 to 8) and nothing else. Keep
   "Kevin, our forever guide. Along for every mile." Copy is warm and plain: no
