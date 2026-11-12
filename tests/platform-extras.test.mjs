@@ -93,17 +93,31 @@ test('an erupting vent lifts a fallen player back up; a resting vent leaves the 
   assert.equal(run.vents,0);
 });
 
-test('a frenzy starts a bounded snack shower that is never written into a checkpoint',()=>{
+test('a frenzy starts a bounded snack shower whose treats rest on the ground and survive a checkpoint',()=>{
   const run=new PlatformRun();run.reset({levelId:'river-1'});const authored=run.entities.length;
   for(let i=0;i<18;i++)run._collect({type:'bone',x:run.player.x,y:run.player.y,taken:false});
-  assert.ok(run.feverTime>0);step(run,4);
+  assert.ok(run.feverTime>0);step(run,1);
+  // Saved one second in: the rest of the shower and the treats in the air carry over.
+  const saved=JSON.parse(JSON.stringify(run.snapshot())),live=run.entities.filter(e=>e.rain&&!e.taken).length;
+  assert.ok(live>=3);assert.equal(saved.entities.filter(e=>String(e.id).startsWith('rain-')).length,live);
+  const restored=new PlatformRun();restored.reset({levelId:'river-1',checkpoint:saved});
+  assert.equal(restored.entities.filter(e=>e.rain).length,live);assert.equal(restored._rain,run._rain);assert.equal(restored._rainSeed,run._rainSeed);
+  step(run,3);step(restored,3);
   const rain=run.entities.filter(e=>e.rain);
   assert.equal(run.entities.length-authored,rain.length);assert.ok(rain.length>=14&&rain.length<=16);
+  assert.equal(restored._rainCount,run._rainCount,'the restored shower drops the same treats');
+  assert.deepEqual(restored.entities.filter(e=>e.rain).map(e=>[e.id,Math.round(e.x)]),rain.map(e=>[e.id,Math.round(e.x)]));
   assert.ok(rain.every(e=>e.type==='bone'&&e.x>=30&&e.x<=run.width-30&&Number.isFinite(e.y)));
-  const saved=run.snapshot();assert.ok(saved.entities.every(e=>!String(e.id).startsWith('rain-')));
-  const restored=new PlatformRun();restored.reset({levelId:'river-1',checkpoint:saved});
-  assert.equal(restored.entities.filter(e=>e.rain).length,0);assert.equal(restored.entities.length,authored);
+  // Nothing sinks into the soil: a treat over solid ground stops on top of it.
+  const grounded=rain.filter(e=>!e.taken&&e.floor!==undefined);assert.ok(grounded.length>0);
+  step(run,2.2);assert.ok(grounded.filter(e=>!e.taken).every(e=>e.y<=e.floor));
   step(run,8);assert.ok(run.entities.filter(e=>e.rain&&!e.taken).length===0,'uncaught treats expire');
+  // A tampered save cannot conjure a flood or break the seed.
+  const junk=JSON.parse(JSON.stringify(saved));junk.state._rain=1e9;junk.state._rainSeed='x';
+  for(let i=0;i<60;i++)junk.entities.push({id:`rain-${900+i}`,spawn:{type:'bone',rain:true,x:1e9,y:NaN,vy:1e9,life:1e9}});
+  const safe=new PlatformRun();safe.reset({levelId:'river-1',checkpoint:junk});
+  assert.ok(safe._rain<=16);assert.ok(Number.isInteger(safe._rainSeed));assert.ok(safe.entities.filter(e=>e.rain).length<=16);
+  assert.ok(safe.entities.filter(e=>e.rain).every(e=>Number.isFinite(e.x)&&Number.isFinite(e.y)&&e.vy<=260&&e.life<=6.5));
 });
 
 test('landing reports impact for feedback and dropping into a gap splashes once',()=>{
@@ -204,4 +218,48 @@ test('a jump tapped and let go just before landing is a short hop; one still hel
   const hop=flight(true),leap=flight(false);
   assert.ok(hop>40&&hop<leap*.7,`a released tap hops ${hop.toFixed(0)}px, a held one leaps ${leap.toFixed(0)}px`);
   assert.ok(leap>95);
+});
+
+test('a stomped boss leaps away dazed and cannot hurt until it has landed',()=>{
+  for(const id of ['river-6','mesa-6']){
+    const run=new PlatformRun();run.reset({levelId:id});const boss=run.entities.find(e=>e.subtype==='boss');assert.ok(boss,id);
+    const hearts=run.hearts;let stomps=0;
+    for(let round=0;round<3;round++){
+      // Drop straight onto the boss and do nothing else, the way a first-time player would.
+      Object.assign(run.player,{x:boss.x,y:boss.y-boss.h/2-60,vx:0,vy:200,grounded:false,jumps:1});run._groundId=null;run._coyote=0;run.invincible=0;
+      for(let i=0;i<120&&run.stomps===stomps;i++)run.update(1/120);
+      assert.equal(run.stomps,++stomps,`${id}: stomp ${stomps} lands`);
+      for(let i=0;i<200&&boss.hurtTime>0&&!boss.taken&&run.mode==='running';i++){run.invincible=0;run.update(1/120);}
+      assert.equal(run.hearts,hearts,`${id}: stomp ${stomps} costs nothing while the boss is dazed`);
+    }
+    assert.equal(run.bossDefeated,true);assert.equal(run.hits,0);
+  }
+});
+
+test('lively bandits never reach a buddy standing on the steps, and a marker never returns the buddy into a lane',()=>{
+  const layouts=[];for(const meta of LEVELS){layouts.push({levelId:meta.id});layouts.push({levelId:meta.id,remix:true,seed:7});}
+  let lively=0,stands=0,returns=0;
+  // The worst case: the bandit is held at the point of its lane nearest the buddy, who waits with no grace at all.
+  const wait=(run,foe,seconds)=>{const hits=run.hits;for(let i=0;i<seconds*60&&run.mode==='running';i++){run.invincible=0;foe.x=Math.max(foe.left,Math.min(foe.right,run.player.x));run.update(1/60);}return run.hits-hits;};
+  for(const config of layouts){
+    const run=new PlatformRun();run.reset(config);const level=run.level;
+    for(const foe of run.entities.filter(e=>e.type==='enemy'&&e.subtype!=='boss')){
+      const s=level.sectionShapes.find(s=>foe.right===s.x+535);assert.ok(s,`${config.levelId}: every bandit belongs to a section`);
+      const marker=run.entities.find(e=>e.type==='marker'&&e.x===s.x+500);assert.ok(marker);
+      assert.ok(foe.left-marker.spawnX>44,`${config.levelId} section ${s.index}: the marker returns the buddy ${foe.left-marker.spawnX}px from a ${foe.subtype}`);returns++;
+      if(!['hopper','floater'].includes(foe.subtype))continue;
+      lively++;assert.notEqual(s.shape,'spring-bridge',`${config.levelId}: no hopping under a bridge`);
+      // Stand on the overhanging lip of each low step through two hops or a whole bob.
+      for(const plat of run.platforms.filter(p=>!['ground','block','secret'].includes(p.type)&&p.x>=s.x+100&&p.x<=s.x+300&&p.y<s.floorY-50&&p.y>s.floorY-170)){
+        plat.type='grass';plat.active=true;Object.assign(run.player,{x:plat.x+plat.w+20,y:plat.y,vx:0,vy:0,grounded:true,jumps:0});run._groundId=plat.id;
+        assert.equal(wait(run,foe,4),0,`${config.levelId} section ${s.index}: a ${foe.subtype} reached the buddy on a step`);
+        assert.equal(run.player.grounded,true);stands++;
+      }
+      // And on the ground where the marker brings the buddy back.
+      const ground=run.platforms.find(p=>p.type==='ground'&&p.x===s.x);
+      Object.assign(run.player,{x:marker.spawnX,y:marker.spawnY,vx:0,vy:0,grounded:true,jumps:0});run._groundId=ground.id;
+      assert.equal(wait(run,foe,4),0,`${config.levelId} section ${s.index}: the marker spot is inside a ${foe.subtype}'s reach`);
+    }
+  }
+  assert.ok(lively>20&&stands>40&&returns>150,`${lively} lively bandits, ${stands} stands, ${returns} returns`);
 });

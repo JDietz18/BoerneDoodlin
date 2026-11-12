@@ -532,6 +532,7 @@ export class Renderer {
     }
   }
   drawStorm(run,{time=0,dt=0,reducedMotion=false,insets}={}){
+    this.juice.ceiling=-Infinity;
     const rm=Boolean(reducedMotion),j=this.juice;this.reducedMotion=rm;j.reducedMotion=rm;
     dt=clamp(Number(dt)||0,0,.1);j.update(dt);
     const c=this.begin(),L=this._stormLayout(run,insets),sv=this._stormState(run),amb=this._ambient(),kit=this._kit(L.size);

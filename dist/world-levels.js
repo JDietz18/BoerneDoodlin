@@ -106,7 +106,16 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
   for(const e of entities){
     if(e.type!=='enemy'||e.subtype!=='patrol')continue;const roll=extra(),pick=extra(),phase=extra();
     if(!habits.length||roll>=.3+meta.index*.05+meta.worldIndex*.03)continue;
-    e.subtype=habits[Math.floor(pick*habits.length)];e.baseY=e.y;e.phase=phase*6;if(e.subtype==='roller')e.vx*=1.9;
+    e.subtype=habits[Math.floor(pick*habits.length)];
+    if(e.subtype!=='roller'){
+      // Hoppers and floaters keep clear of the first step, so they can never
+      // come up through a platform under the buddy. The bridge sections have
+      // no room for that, so those bandits roll or simply patrol.
+      const s=sectionShapes.find(s=>s.x===e.left-245);
+      if(!s||s.shape==='spring-bridge'){if(!habits.includes('roller')){e.subtype='patrol';continue;}e.subtype='roller';}
+      else e.left=s.x+(s.shape==='canopy-steps'?336:350);
+    }
+    e.baseY=e.y;e.phase=phase*6;if(e.subtype==='roller')e.vx*=1.9;
   }
   const balloon=(x,top,reward=2)=>entity('balloon',x,top+25,56,50,{skin,reward});
   let skyways=0;
@@ -117,7 +126,9 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
       skyways++;for(let i=0;i<4;i++)balloon(s.x+742+i*168,(s.floorY-286)+(next.floorY-s.floorY)*(i/3)+(i%2?-10:0));
     }
     // A quiet marker before each gap: a fall returns here, not far back.
-    entity('marker',s.x+500,s.floorY-18,24,36,{spawnX:s.x+500,spawnY:s.floorY,active:false});
+    // Where a bandit patrols, the way back begins just before its lane.
+    const patrolled=entities.some(e=>e.type==='enemy'&&e.subtype!=='boss'&&e.right===s.x+535);
+    entity('marker',s.x+500,s.floorY-18,24,36,{spawnX:s.x+(patrolled?190:500),spawnY:s.floorY,active:false});
     // Vents lift anyone who drops into the gap while they are erupting.
     if(!s.bridged&&s.index>=(meta.globalIndex===0?5:1)&&ventRoll<.36+meta.worldIndex*.04)
       entity('vent',s.x+570+s.gap/2,540,Math.min(96,s.gap-36),120,{skin,period:3.4+phase*1.1,duty:.42,phase:phase*5,lift:880});

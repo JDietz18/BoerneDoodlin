@@ -30,7 +30,7 @@ const KINDS={
 export class Juice {
   constructor({maxParticles=260,maxPopups=26,maxRings=14,random=Math.random}={}){
     this.maxParticles=maxParticles;this.maxPopups=maxPopups;this.maxRings=maxRings;this._random=random;
-    this.reducedMotion=false;this.clear();
+    this.reducedMotion=false;this.ceiling=-Infinity;this.clear();
   }
   clear(){
     this.particles=[];this.popups=[];this.rings=[];this.fliers=[];
@@ -75,7 +75,7 @@ export class Juice {
   burst(kind,x,y,{count,color,colors,angle,spread,speed=1,scale=1,vx=0,vy=0}={}){
     const k=KINDS[kind]||KINDS.spark;if(!Number.isFinite(x)||!Number.isFinite(y))return 0;
     let n=Math.round(clamp(finite(count,k.count),0,80));
-    if(this.reducedMotion)n=Math.min(n,kind==='confetti'?6:3);
+    if(this.reducedMotion)return 0;
     const palette=colors||(color?[color]:k.colors),[a0,a1]=spread||k.spread||[0,TAU];
     for(let i=0;i<n;i++){
       const a=angle!==undefined?angle+this.rand(-.5,.5)*(a1-a0):this.rand(a0,a1),v=this.rand(k.speed[0],k.speed[1])*speed*(this.reducedMotion?.25:1);
@@ -92,8 +92,23 @@ export class Juice {
   // moves, such as the player; x and y are then offsets from that point.
   popup(text,x,y,{color='#fff4d7',size=15,life=1,rise=42,weight=900,stroke='#133b3dd9',follow=null}={}){
     if(!text||!Number.isFinite(x)||!Number.isFinite(y))return null;if(typeof follow!=='function')follow=null;
-    // Nudge a new label above a fresh neighbour so stacked pickups stay readable.
-    for(const other of this.popups)if(!other.follow===!follow&&other.max-other.life<.35&&Math.abs(other.x-x)<70&&Math.abs(other.y-y)<size+4)y=other.y-size-5;
+    // Move a new label clear of fresh neighbours so stacked pickups stay readable,
+    // whether they follow the buddy or sit in the world: up if there is room
+    // under the ceiling, otherwise down.
+    const at=follow?follow():null,ax=finite(at?.x)+x,ay=finite(at?.y)+y,words=String(text).length,step=size*1.15+2;
+    let place=ay;
+    for(let k=0;k<=10;k++){
+      // 0, then one step up, one down, two up, two down, and so on.
+      const tryY=ay+(k===0?0:(k%2?-1:1)*Math.ceil(k/2)*step);
+      if(k%2===1&&tryY-size<this.ceiling)continue;
+      let clear=true;
+      for(const o of this.popups){
+        if(o.max-o.life>.6)continue;const oat=o.follow?o.follow():null,ox=finite(oat?.x)+o.x,oy=Math.max(finite(oat?.y)+o.y-o.lift,this.ceiling+o.size);
+        if(Math.abs(ox-ax)<(o.text.length*o.size+words*size)*.3&&Math.abs(oy-tryY)<(o.size+size)*.55){clear=false;break;}
+      }
+      if(clear){place=tryY;break;}
+    }
+    y=place-finite(at?.y);
     const max=clamp(finite(life,1),.2,4),popup={text:String(text).slice(0,40),x,y,color,stroke,size:clamp(finite(size,15),6,90),life:max,max,rise:this.reducedMotion?0:finite(rise,42),weight,follow,lift:0};
     this.popups.push(popup);
     if(this.popups.length>this.maxPopups)this.popups.splice(0,this.popups.length-this.maxPopups);
@@ -156,7 +171,7 @@ export class Juice {
     for(const p of this.popups){
       const age=p.max-p.life,pop=this.reducedMotion?1:age<.14?.55+age/.14*.65:age<.24?1.2-(age-.14)/.1*.2:1;
       c.globalAlpha=clamp(p.life/Math.min(.35,p.max)*1,0,1);c.font=`${p.weight} ${Math.round(p.size*pop)}px system-ui,-apple-system,sans-serif`;
-      const base=p.follow?p.follow():null,x=base?finite(base.x)+p.x:p.x,y=(base?finite(base.y)+p.y:p.y)-p.lift;
+      const base=p.follow?p.follow():null,x=base?finite(base.x)+p.x:p.x,y=Math.max((base?finite(base.y)+p.y:p.y)-p.lift,this.ceiling+p.size);
       c.lineWidth=Math.max(3,p.size*.28);c.strokeStyle=p.stroke;c.strokeText(p.text,x,y);c.fillStyle=p.color;c.fillText(p.text,x,y);
     }
     c.restore();

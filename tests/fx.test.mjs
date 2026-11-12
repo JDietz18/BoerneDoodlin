@@ -72,13 +72,13 @@ test('shake decays to rest and stays within a small bound', () => {
   assert.deepEqual(fx.offset, { x: 0, y: 0, rot: 0, zoom: 1 });
 });
 
-test('reduced motion removes shake, freezes and flight, and keeps bursts tiny', () => {
+test('reduced motion removes shake, freezes, flight, bursts and flashes', () => {
   const fx = new Juice({ random: () => .5 }); fx.reducedMotion = true;
   fx.shake(1); fx.kick(20, 20); fx.zoomPunch(.1); fx.hitStop(.1); fx.slowMo(.2, 1);
   assert.deepEqual(fx.offset, { x: 0, y: 0, rot: 0, zoom: 1 });
   assert.equal(fx.step(.016), .016);
-  assert.ok(fx.burst('confetti', 10, 10) <= 6);
-  assert.ok(fx.burst('gold', 10, 10) <= 3);
+  assert.equal(fx.burst('confetti', 10, 10), 0);
+  assert.equal(fx.burst('gold', 10, 10), 0); assert.equal(fx.particles.length, 0);
   let arrived = 0; fx.fly({ x: 0, y: 0, target: () => ({ x: 9, y: 9 }), draw() {}, onArrive: () => arrived++ });
   assert.equal(arrived, 1); assert.equal(fx.fliers.length, 0);
   const popup = fx.popup('+10', 5, 5); assert.equal(popup.rise, 0);
@@ -105,4 +105,24 @@ test('scenery hashing is stable and easing stays in range', () => {
   assert.notEqual(hash01(12, 7), hash01(13, 7));
   for (let i = 0; i < 500; i++) { const v = hash01(i, i * 3); assert.ok(v >= 0 && v < 1); }
   for (const fn of Object.values(ease)) { assert.ok(Math.abs(fn(0)) < 1e-9); assert.ok(Math.abs(fn(1) - 1) < 1e-9); }
+});
+
+test('labels lift clear of fresh neighbours, following or not, and never draw above the ceiling', () => {
+  const fx = new Juice({ random: () => .5 }), buddy = { x: 100, y: 200 };
+  const first = fx.popup('10× STACK', 0, -70, { size: 20, follow: () => buddy });
+  const second = fx.popup('+160', 100, 130, { size: 16 });            // in the world, at the same spot on screen
+  const third = fx.popup('GOLD RUSH ×2', 0, -70, { size: 18, follow: () => buddy });
+  const at = p => ({ x: (p.follow ? p.follow().x : 0) + p.x, y: (p.follow ? p.follow().y : 0) + p.y - p.lift });
+  const apart = (a, b) => Math.abs(at(a).y - at(b).y) >= (a.size + b.size) * .55 || Math.abs(at(a).x - at(b).x) >= (a.text.length * a.size + b.text.length * b.size) * .3;
+  assert.ok(apart(first, second) && apart(first, third) && apart(second, third), 'no two fresh labels share a spot');
+  assert.ok(at(second).y < at(first).y, 'the newer label goes above when there is room');
+  const far = fx.popup('+10', 600, 130, { size: 16 }); assert.equal(far.y, 130, 'a label with room is left where it was asked for');
+  // A view can say where its HUD ends. Right under it, new labels stack downward instead of piling up.
+  const low = new Juice({ random: () => .5 }); low.ceiling = 100;
+  const pile = ['5× STACK', 'GOLD RUSH ×2', 'SNACK FRENZY ×2', '+160'].map(text => low.popup(text, 200, 110, { size: 16 }));
+  for (let i = 0; i < pile.length; i++) for (let k = i + 1; k < pile.length; k++) assert.ok(Math.abs(pile[i].y - pile[k].y) >= 16 * 1.1, `${pile[i].text} and ${pile[k].text} are apart`);
+  assert.ok(pile.every(p => p.y - p.size >= 100 || p === pile[0]), 'none of them was pushed above the ceiling');
+  fx.ceiling = 150; const drawn = [];
+  fx.draw({ save() {}, restore() {}, strokeText() {}, fillText(text, x, y) { drawn.push([text, y]); }, beginPath() {}, arc() {}, fill() {}, stroke() {}, drawImage() {}, translate() {}, rotate() {}, scale() {}, fillRect() {}, ellipse() {}, moveTo() {}, lineTo() {}, closePath() {}, setTransform() {} });
+  assert.equal(drawn.length, 4); assert.ok(drawn.every(([, y]) => y >= 150), 'nothing is drawn under the band');
 });

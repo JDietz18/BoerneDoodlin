@@ -2,6 +2,8 @@ import {LEVELS,getLevel} from './world-levels.js?v=21';
 
 export const PLATFORM_WORLD=Object.freeze({width:960,height:600,tile:48,ground:480});
 const W=48,H=64,GRAVITY=1750;
+const RESTING=['ground','grass','bridge'];
+const TIMERS=['invincible','powerTime','magnetTime','feverTime','goldRushTime','_feverCooldown','comboTime','_jumpBuffer','_springCooldown','_ventCooldown'];
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,Number(n)||0));
 const finite=(n,fallback=0)=>Number.isFinite(Number(n))?Number(n):fallback;
 const approach=(n,target,amount)=>n<target?Math.min(target,n+amount):Math.max(target,n-amount);
@@ -81,7 +83,7 @@ export class PlatformRun {
   }
   _step(dt){
     this.time+=dt;
-    for(const key of ['invincible','powerTime','magnetTime','feverTime','goldRushTime','_feverCooldown','comboTime','_jumpBuffer','_springCooldown','_ventCooldown'])this[key]=Math.max(0,this[key]-dt);
+    for(const key of TIMERS)this[key]=Math.max(0,this[key]-dt);
     if(!this.comboTime&&this.combo){this.combo=0;this.multiplier=1;}
     if(this._hopCut>0){this._hopCut-=dt;if(this._hopCut<=0){this._hopCut=0;this.releaseJump();}}
     this._gainCharge(dt*1.4);if(this.mode!=='running')return;
@@ -119,7 +121,7 @@ export class PlatformRun {
       else if(e.type==='balloon')this._balloonStep(e,oldFeet);
       else if(e.type==='vent')this._ventStep(e);
       else if(e.type==='chest'){if(e.secret&&!e.revealed&&Math.abs(e.x-p.x)<250&&Math.abs(e.y-(p.y-H/2))<145){e.revealed=true;this.emit('secret-found',{x:e.x,y:e.y});}}
-      else if(!['block','sign'].includes(e.type)){if(e.rain){e.y+=e.vy*dt;e.life-=dt;if(e.life<=0||e.y>this.height+40){e.taken=true;continue;}}this._maybeCollect(e);}
+      else if(e.type!=='block'&&e.type!=='sign'){if(e.rain){e.age=(e.age||0)+dt;e.y=Math.min(e.floor??1e9,e.y+e.vy*dt);e.life-=dt;if(e.life<=0||e.y>this.height+40){e.taken=true;continue;}}this._maybeCollect(e);}
       if(this.mode!=='running')return;
     }
     this.farthest=Math.max(this.farthest,p.x);this.distance=Math.max(0,this.farthest-this.level.spawn.x);this.camera.x=clamp(p.x-340,0,this.width-960);
@@ -139,13 +141,14 @@ export class PlatformRun {
       if(e.baseY===undefined)e.baseY=e.y;const leaping=e.hurtTime>0;
       e.y=e.baseY-(leaping?Math.sin(Math.PI*(1-e.hurtTime/.8))*130:0);e.airborne=leaping;e.x+=e.vx*(leaping?2.4:1+((e.maxHp||3)-e.hp)*.3)*dt;
     }
-    else{if(e.subtype==='floater')e.y=e.baseY-78+Math.sin(this.time*1.7+(e.phase||0))*44;e.x+=e.vx*dt;}
+    else{if(e.subtype==='floater')e.y=e.baseY-59+Math.sin(this.time*1.7+(e.phase||0))*28;e.x+=e.vx*dt;}
     if(e.x<e.left){e.x=e.left;e.vx=Math.abs(e.vx);}if(e.x>e.right){e.x=e.right;e.vx=-Math.abs(e.vx);}
     const top=e.y-e.h/2,bottom=e.y+e.h/2;
     if(Math.abs(e.x-p.x)>W*.42+e.w*.43||p.y<=top||p.y-H>=bottom)return;
     if(p.vy>0&&oldFeet<=top+18){p.y=top-2;p.vy=this.charms.stompBounce?-560:-420;p.jumpHeld=false;p.grounded=false;p.jumps=1;this._groundId=null;this._coyote=0;if(!(e.hurtTime>0)){this.airStomps++;this.bestStompChain=Math.max(this.bestStompChain,this.airStomps);if(this.airStomps===4||(this.airStomps>4&&this.airStomps%2===0))this._goldRush(this.airStomps===4?3:2,'air');}this._stomp(e,false);}
     else if(this.powerTime>0)this._stomp(e,true);
-    else this._damage('enemy',e);
+    // A boss that has just been stomped is leaping away dazed: it cannot hurt.
+    else if(!(e.subtype==='boss'&&e.hurtTime>0))this._damage('enemy',e);
   }
   _stomp(e,powered){
     if(e.hurtTime>0)return;e.hp--;e.hurtTime=.8;this.stomps++;this._gainCharge(10+(this.charms.stompCharge?15:0));
@@ -210,12 +213,18 @@ export class PlatformRun {
     this._rainTimer=.17;this._rain--;this._rainSeed=(Math.imul(this._rainSeed,1664525)+1013904223)>>>0;
     const r=this._rainSeed/4294967296,p=this.player;
     if(this._rain===15)this.entities=this.entities.filter(e=>!(e.rain&&e.taken));
-    this.entities.push({id:`rain-${++this._rainCount}`,type:'bone',x:clamp(p.x+p.vx*.9+(r-.42)*560,30,this.width-30),y:Math.max(-40,p.y-470),w:26,h:24,taken:false,rain:true,vy:150+((r*7919)%1)*80,life:5.5});
+    const x=clamp(p.x+p.vx*.9+(r-.42)*560,30,this.width-30),y=Math.max(-40,p.y-470);
+    // A treat comes to rest on the first solid ground beneath it; over a gap it falls away.
+    let floor;for(const s of this.platforms)if(s.active!==false&&RESTING.includes(s.type)&&x>=s.x&&x<=s.x+s.w&&s.y>y+40&&(floor===undefined||s.y<floor))floor=s.y;
+    this.entities.push({id:`rain-${++this._rainCount}`,type:'bone',x,y,w:26,h:24,taken:false,rain:true,vy:150+((r*7919)%1)*80,life:6.5,age:0,...(floor===undefined?{}:{floor:floor-14})});
   }
   _updateInteraction(){
     const p=this.player,reach=this.charms.secretMagnet?150:95;
-    const e=this.entities.filter(e=>!e.taken&&['chest','goal','sign'].includes(e.type)&&Math.abs(e.x-p.x)<reach&&Math.abs(e.y-(p.y-H/2))<125).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];
-    this.interaction=e?{id:e.id,type:e.type,text:e.type==='chest'?'Open the snack chest':e.type==='goal'?(this.keys>=this.requiredKeys&&this.bossDefeated?'Head onward':'Find both keys and clear the trail'):e.text,x:e.x,y:e.y}:null;
+    // The nearest chest, sign, or goal within reach. Runs every step, so it allocates only when the answer changes.
+    let e=null,best=reach;
+    for(const item of this.entities){if(item.taken||(item.type!=='chest'&&item.type!=='goal'&&item.type!=='sign'))continue;const far=Math.abs(item.x-p.x);if(far<best&&Math.abs(item.y-(p.y-H/2))<125){best=far;e=item;}}
+    const text=!e?'':e.type==='chest'?'Open the snack chest':e.type==='goal'?(this.keys>=this.requiredKeys&&this.bossDefeated?'Head onward':'Find both keys and clear the trail'):e.text;
+    if(!e)this.interaction=null;else if(this.interaction?.id!==e.id||this.interaction.text!==text||this.interaction.x!==e.x||this.interaction.y!==e.y)this.interaction={id:e.id,type:e.type,text,x:e.x,y:e.y};
     if((e?.id||null)!==this._promptId){this._promptId=e?.id||null;this.emit('prompt',this.interaction||{text:'',id:null});}
   }
   interact(){
@@ -237,19 +246,22 @@ export class PlatformRun {
   _finish(won){if(this.mode!=='running'||this.finished)return;this.finished=true;this.mode=won?'won':'lost';this._move=0;if(won)this.score+=500+this.hearts*100+(this.hits===0?300:0);this.emit(won?'won':'lost',{result:this.result()});}
   result(){return {runId:this.runId,mode:'platform',state:this.mode,levelId:this.levelId,worldIndex:this.worldIndex,stage:this.worldIndex,characterId:this.characterId,won:this.mode==='won',score:Math.round(this.score),treats:this.treats,gold:this.gold,keys:this.keys,bestCombo:this.bestCombo,bestMultiplier:this.bestMultiplier,hits:this.hits,stomps:this.stomps,secrets:this.secrets,blocks:this.blocks,checkpoints:this.checkpoints,chests:this.chests,dodged:this.dodged,nearMisses:this.nearMisses,powersUsed:this.powersUsed,hearts:this.hearts,maxHearts:this.maxHearts,time:Number(this.time.toFixed(3)),distance:Math.round(this.distance),letters:0,seed:this.seed,remix:this.remix,assist:this.assist,dailyDate:this.dailyDate,bossDefeated:this.bossDefeated,springs:this.springs,doubleJumps:this.doubleJumps,pops:this.pops,vents:this.vents,bestStompChain:this.bestStompChain};}
   snapshot(){
-    const fields=['time','distance','farthest','score','treats','gold','keys','hearts','charge','powerTime','powerDuration','powersUsed','invincible','shieldCharges','magnetTime','feverTime','goldRushTime','_feverCooldown','combo','bestCombo','multiplier','bestMultiplier','comboTime','hits','stomps','blocks','secrets','chests','checkpoints','dodged','nearMisses','springs','doubleJumps','pops','vents','bestStompChain','bossDefeated','_groundId','_coyote'];
+    const fields=['time','distance','farthest','score','treats','gold','keys','hearts','charge','powerTime','powerDuration','powersUsed','invincible','shieldCharges','magnetTime','feverTime','goldRushTime','_feverCooldown','combo','bestCombo','multiplier','bestMultiplier','comboTime','hits','stomps','blocks','secrets','chests','checkpoints','dodged','nearMisses','springs','doubleJumps','pops','vents','bestStompChain','airStomps','_rain','_rainTimer','_rainCount','_rainSeed','bossDefeated','_groundId','_coyote'];
     const state=Object.fromEntries(fields.map(key=>[key,this[key]]));
     return clone({version:1,kind:'platform',mode:this.mode,config:this._config,runId:this.runId,player:this.player,checkpoint:this.checkpoint,state,
-      entities:this.entities.filter(e=>!e.rain&&(e.taken||e.used||e.active||e.type==='enemy'||e.id.startsWith('block-heart-')||e.revealed)).map(e=>({id:e.id,taken:!!e.taken,used:!!e.used,active:!!e.active,revealed:!!e.revealed,hp:e.hp,x:e.x,y:e.y,vx:e.vx,hurtTime:e.hurtTime,...(e.id.startsWith('block-heart-')?{spawn:e}:{})})),
+      entities:this.entities.filter(e=>e.rain?!e.taken:(e.taken||e.used||e.active||e.type==='enemy'||e.id.startsWith('block-heart-')||e.revealed)).map(e=>({id:e.id,taken:!!e.taken,used:!!e.used,active:!!e.active,revealed:!!e.revealed,hp:e.hp,x:e.x,y:e.y,vx:e.vx,hurtTime:e.hurtTime,...(e.rain||e.id.startsWith('block-heart-')?{spawn:e}:{})})),
       platforms:this.platforms.filter(s=>s.used||s.active===false||s.crumbleTimer).map(s=>({id:s.id,used:!!s.used,active:s.active,crumbleTimer:s.crumbleTimer||0,respawnIn:s.respawnIn||0}))});
   }
   restore(saved){
     if(!saved||saved.version!==1||saved.kind!=='platform'||!['running','paused'].includes(saved.mode)||!LEVELS.some(l=>l.id===saved.config?.levelId)||!saved.player||!saved.state)return false;
     this.reset({...saved.config,checkpoint:undefined});
-    for(const [key,value] of Object.entries(saved.state)){if(!Object.hasOwn(this,key))continue;if(typeof this[key]==='number')this[key]=clamp(value,0,1e9);else if(key==='bossDefeated')this[key]=Boolean(value);else if(key==='_groundId')this[key]=typeof value==='string'?value:null;}
+    for(const [key,value] of Object.entries(saved.state)){if(!Object.hasOwn(this,key))continue;if(key==='_rainSeed')this[key]=(Number(value)||0)>>>0;else if(key==='_rain'||key==='_rainCount')this[key]=Math.round(clamp(value,0,key==='_rain'?16:1e6));else if(typeof this[key]==='number')this[key]=clamp(value,0,1e9);else if(key==='bossDefeated')this[key]=Boolean(value);else if(key==='_groundId')this[key]=typeof value==='string'?value:null;}
     this.hearts=clamp(this.hearts,1,this.maxHearts);this.player={...this.player,...saved.player,x:clamp(saved.player.x,W/2,this.width-W/2),y:clamp(saved.player.y,-200,this.height+50),vx:clamp(saved.player.vx,-400,400),vy:clamp(saved.player.vy,-1100,1100),w:W,h:H,width:W,height:H};
     if(saved.checkpoint&&Number.isFinite(saved.checkpoint.x)&&Number.isFinite(saved.checkpoint.y))this.checkpoint={id:String(saved.checkpoint.id||'saved'),x:clamp(saved.checkpoint.x,24,this.width-24),y:clamp(saved.checkpoint.y,0,600)};
-    for(const change of Array.isArray(saved.entities)?saved.entities:[]){let e=this.entities.find(e=>e.id===change.id);if(!e&&change.spawn?.type==='heart'&&String(change.id).startsWith('block-heart-')){e={...change.spawn};this.entities.push(e);}if(e)for(const key of ['taken','used','active','revealed','hp','x','y','vx','hurtTime'])if(change[key]!==undefined)e[key]=change[key];}
+    let rained=0;
+    for(const change of Array.isArray(saved.entities)?saved.entities:[]){let e=this.entities.find(e=>e.id===change.id);if(!e&&change.spawn?.type==='heart'&&String(change.id).startsWith('block-heart-')){e={...change.spawn};this.entities.push(e);}
+      // Treats from a snack shower that were still falling when the game was saved.
+      else if(!e&&change.spawn?.rain===true&&change.spawn.type==='bone'&&/^rain-\d+$/.test(String(change.id))&&rained++<16){const t=change.spawn,floor=Number(t.floor);e={id:String(change.id),type:'bone',x:clamp(t.x,30,this.width-30),y:clamp(t.y,-60,this.height+40),w:26,h:24,taken:false,rain:true,vy:clamp(t.vy,100,260),life:clamp(t.life,0,6.5),age:clamp(t.age,0,6.5),...(Number.isFinite(floor)?{floor:clamp(floor,0,this.height)}:{})};this.entities.push(e);continue;}if(e)for(const key of ['taken','used','active','revealed','hp','x','y','vx','hurtTime'])if(change[key]!==undefined)e[key]=change[key];}
     for(const change of Array.isArray(saved.platforms)?saved.platforms:[]){const s=this.platforms.find(s=>s.id===change.id);if(s)Object.assign(s,{used:!!change.used,active:change.active!==false,crumbleTimer:finite(change.crumbleTimer),respawnIn:finite(change.respawnIn)});}
     const groundId=this._groundId;this._groundId=null;this._stepPlatforms(0);this._groundId=groundId;this._move=0;this._jumpBuffer=0;this.mode='running';this.finished=false;this.runId=typeof saved.runId==='string'?saved.runId.slice(0,150):this.runId;this._updateInteraction();this.emit('restore',{levelId:this.levelId,x:this.player.x,y:this.player.y});return true;
   }
