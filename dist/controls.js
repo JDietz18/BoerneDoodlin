@@ -13,7 +13,7 @@
 
 const TAU=Math.PI*2;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const DEAD=10,TRAIL=22,STEP=26,FLICK=48,PULL=46,HOLD=.9,HOLD_SHOW=.28,WINDOW=.22,REARM=.35,RECENT=32;
+const DEAD=10,TRAIL=22,STEP=26,FLICK=48,PULL=46,HOLD=.9,HOLD_SHOW=.28,WINDOW=.22,REARM=.35,BACK=.6,EDGE=16,RECENT=32;
 
 export class Controls {
   constructor({canvas,rallyCanvas,on,now=()=>globalThis.performance?.now?.()??Date.now()}){
@@ -40,9 +40,12 @@ export class Controls {
   _since(p,t){const n=Math.min(p.hn,RECENT);for(let k=1;k<=n;k++){const i=(p.hn-k)%RECENT;if(t-p.ht[i]>=WINDOW)return i;}return n?(p.hn-n)%RECENT:-1;}
   _restart(p,t,x,y){p.hn=0;this._sample(p,t,x,y);}
   // One flick is one power. The same finger can flick again a moment later.
+  // A thumb coming back from a pull down is not a flick: for a moment, only
+  // travel above where that pull began counts (and the same the other way).
   _flick(p,t,x,y,rise,side){
+    if(t-p.pullT<BACK)rise=Math.min(rise,p.pullY-y);
     if(rise<FLICK||rise<=side*1.2||t-p.flickT<REARM)return false;
-    p.flickT=t;this._restart(p,t,x,y);this._power();return true;
+    p.flickT=t;p.flickY=y+rise;this._restart(p,t,x,y);this._power();return true;
   }
   _role(kind){for(const p of this.pointers.values())if(p.role===kind)return p;return null;}
   _local(canvas,e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top,w:r.width||1,h:r.height||1};}
@@ -52,8 +55,11 @@ export class Controls {
     canvas.addEventListener('pointerdown',e=>{
       if(!this.active)return;e.preventDefault();this.on.gesture?.(e);
       try{canvas.setPointerCapture(e.pointerId);}catch{/* synthetic or already released */}
-      const at=this._local(canvas,e),t=this._now()/1000,p={id:e.pointerId,canvas,x0:at.x,y0:at.y,x:at.x,y:at.y,ax:at.x,ay:at.y,low:at.y,t0:t,flickT:-9,ht:new Float64Array(RECENT),hx:new Float32Array(RECENT),hy:new Float32Array(RECENT),hn:0,moved:false,spent:false,pulled:false,role:'action'};
-      this._sample(p,t,at.x,at.y);const steering=this._role('move');this.pointers.set(e.pointerId,p);this.ripples.push({x:at.x,y:at.y,t:0});if(this.ripples.length>8)this.ripples.shift();
+      const at=this._local(canvas,e),t=this._now()/1000,p={id:e.pointerId,canvas,x0:at.x,y0:at.y,x:at.x,y:at.y,ax:at.x,ay:at.y,low:at.y,t0:t,flickT:-9,flickY:0,pullT:-9,pullY:0,edge:at.x<EDGE||at.x>at.w-EDGE,ht:new Float64Array(RECENT),hx:new Float32Array(RECENT),hy:new Float32Array(RECENT),hn:0,moved:false,spent:false,pulled:false,role:'action'};
+      this._sample(p,t,at.x,at.y);let steering=this._role('move');
+      // A hand gripping the very edge of the phone is not playing: the next finger takes over.
+      if(steering&&steering.edge&&!steering.moved){steering.role='rest';steering.spent=true;steering=null;}
+      this.pointers.set(e.pointerId,p);this.ripples.push({x:at.x,y:at.y,t:0});if(this.ripples.length>8)this.ripples.shift();
       const m=this.mode;
       if(m==='platform'){
         // The left half steers unless a thumb is already steering.
@@ -77,6 +83,11 @@ export class Controls {
       if(Math.hypot(at.x-p.x0,at.y-p.y0)>DEAD)p.moved=true;
       const from=this._since(p,t),rise=from<0?0:p.hy[from]-at.y,side=from<0?0:Math.abs(at.x-p.hx[from]);this._sample(p,t,at.x,at.y);
       const m=this.mode;
+      // A finger left on the glass takes over once it starts to steer.
+      if((m==='rally'||m==='snack')&&p.role!=='move'&&!this._role('move')&&Math.abs(at.x-p.x0)>STEP){
+        p.role='move';p.spent=false;p.x0=at.x;p.y0=at.y;p.ax=at.x;p.ay=at.y;p.pulled=false;
+        if(m==='rally'){this.braking=false;this.on.brake?.(false);this._steer=0;this.drag={dx:0};this.on.steerStart?.();}
+      }
       if(m==='platform'){
         if(p.role==='move'){
           const dx=at.x-p.ax;if(Math.abs(dx)>DEAD)this._setDirection(Math.sign(dx),0);
@@ -84,12 +95,13 @@ export class Controls {
           this._flick(p,t,at.x,at.y,rise,side);
         }
         // A quick pull down, measured the same way as the flick.
-        const fall=-rise;
-        if(!p.pulled&&fall>=PULL&&fall>side*1.2){p.pulled=true;this.on.drop?.();this._restart(p,t,at.x,at.y);}else if(p.pulled&&fall<0)p.pulled=false;
+        let fall=-rise;if(t-p.flickT<BACK)fall=Math.min(fall,at.y-p.flickY);
+        if(!p.pulled&&fall>=PULL&&fall>side*1.2){p.pulled=true;p.pullT=t;p.pullY=at.y-fall;this.on.drop?.();this._restart(p,t,at.x,at.y);}else if(p.pulled&&fall<0)p.pulled=false;
       }else if(m==='scout'&&p.role==='move'&&!p.spent){
         const dx=at.x-p.ax,dy=at.y-p.ay;
         if(Math.hypot(dx,dy)>=STEP){
-          const horizontal=Math.abs(dx)>Math.abs(dy);this._setDirection(horizontal?Math.sign(dx):0,horizontal?0:Math.sign(dy));
+          // Keep the way already being walked unless the other clearly leads, so a diagonal drag does not flicker.
+          const ax=Math.abs(dx),ay=Math.abs(dy),horizontal=this.dir.x?ax*1.25>ay:this.dir.y?ax>ay*1.25:ax>ay;this._setDirection(horizontal?Math.sign(dx):0,horizontal?0:Math.sign(dy));
           const d=Math.hypot(dx,dy);p.ax=at.x-dx/d*STEP;p.ay=at.y-dy/d*STEP;p.walked=true;
         }
       }else if(m==='rally'&&p.role==='move'){
@@ -97,8 +109,9 @@ export class Controls {
         // Braking is a deliberate pull back from where the thumb has been resting
         // (the rest point follows a slow drift, see update), held until it eases up.
         const pull=p.pulled?at.y-p.ay>PULL-18:at.y-p.ay>=PULL;
-        if(pull!==p.pulled){p.pulled=pull;this.braking=pull||!!this._role('brake');this.on.brake?.(this.braking);}
-        this._flick(p,t,at.x,at.y,rise,side);
+        if(pull!==p.pulled){p.pulled=pull;this.braking=pull||!!this._role('brake');this.on.brake?.(this.braking);if(!pull){p.flickT=t;this._restart(p,t,at.x,at.y);}}
+        // Easing off the brake is not a boost.
+        if(!p.pulled)this._flick(p,t,at.x,at.y,rise,side);
       }else if(m==='snack'&&p.role==='move'){
         this.on.fieldX?.(clamp(at.x/at.w,0,1));
         this._flick(p,t,at.x,at.y,rise,side);
@@ -111,11 +124,12 @@ export class Controls {
         if(p.role==='move')this._setDirection(0,0);
         else if(!this._role('action'))this.on.releaseJump?.();
       }else if(m==='scout'){
-        if(p.role==='move'){this._setDirection(0,0);if(lifted&&!p.moved&&!p.spent&&!p.walked&&!p.hinted)this.on.tap?.(p.x,p.y);}
+        // A touch that never travelled a full step and lifts promptly is a tap on the tile where it landed, even if the finger slipped a little.
+        if(p.role==='move'){this._setDirection(0,0);if(lifted&&!p.spent&&!p.walked&&!p.hinted&&(!p.moved||this._now()/1000-p.t0<HOLD))this.on.tap?.(p.moved?p.x0:p.x,p.moved?p.y0:p.y);}
       }else if(m==='rally'){
-        if(p.role==='move'){this._steer=null;this.drag=null;this.on.steer?.(null);}
+        if(p.role==='move'){this._steer=null;this.drag=null;this.on.steer?.(null);for(const o of this.pointers.values()){o.x0=o.x;o.y0=o.y;}}
         this.braking=!!this._role('brake')||[...this.pointers.values()].some(o=>o.pulled);this.on.brake?.(this.braking);
-      }else if(m==='snack'&&p.role==='move')this.on.fieldX?.(null);
+      }else if(m==='snack'&&p.role==='move'){this.on.fieldX?.(null);for(const o of this.pointers.values()){o.x0=o.x;o.y0=o.y;}}
     };
     for(const name of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(name,release);
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
@@ -124,7 +138,7 @@ export class Controls {
   // Per-frame upkeep: Trail Scout's press-and-hold hint, the RV's resting
   // point, and fading ripples.
   update(dt){
-    if(this.mode==='scout'&&this.active){const t=this._now()/1000;for(const p of this.pointers.values())if(p.role==='move'&&!p.moved&&!p.spent&&!p.hinted&&t-p.t0>=HOLD){p.hinted=true;this.on.hint?.();}}
+    if(this.mode==='scout'&&this.active){const t=this._now()/1000;for(const p of this.pointers.values())if(p.role==='move'&&!p.edge&&!p.moved&&!p.spent&&!p.hinted&&t-p.t0>=HOLD){p.hinted=true;this.on.hint?.();}}
     // A thumb that slowly wanders down the screen while steering is not braking.
     if(this.mode==='rally')for(const p of this.pointers.values())if(p.role==='move'&&!p.pulled)p.ay+=clamp(p.y-p.ay,-40*dt,40*dt);
     let alive=0;for(const r of this.ripples){r.t+=dt;if(r.t<.4)this.ripples[alive++]=r;}this.ripples.length=alive;
@@ -138,7 +152,7 @@ export class Controls {
     const t=this._now()/1000;
     for(const p of this.pointers.values()){
       // Trail Scout: a ring fills under a finger that is holding still for a hint.
-      if(this.mode==='scout'&&p.role==='move'&&!p.moved&&!p.spent&&!p.hinted&&t-p.t0>HOLD_SHOW){
+      if(this.mode==='scout'&&p.role==='move'&&!p.edge&&!p.moved&&!p.spent&&!p.hinted&&t-p.t0>HOLD_SHOW){
         const u=clamp((t-p.t0-HOLD_SHOW)/(HOLD-HOLD_SHOW),0,1);
         c.globalAlpha=.85;c.strokeStyle='#f6cc70';c.lineWidth=5;c.beginPath();c.arc(p.x,p.y,30,-Math.PI/2,-Math.PI/2+TAU*u);c.stroke();
       }

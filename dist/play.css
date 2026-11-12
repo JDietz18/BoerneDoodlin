@@ -21,7 +21,7 @@ body.playing #arena{touch-action:none}
 #app .hud-pause:active{transform:scale(.94)}
 #app .hud-id{grid-area:id;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
 #app #run-region{max-width:100%;font-size:12px;font-weight:800;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #0b2a28}
-#app .hud-hearts{display:flex;gap:3px;min-height:18px}
+#app .hud-hearts{display:flex;flex-wrap:wrap;gap:3px;max-width:100%;min-height:18px}
 #app .hud-hearts svg{width:18px;height:18px;fill:#ff8f7c;filter:drop-shadow(0 1px 0 #0b2a2899);transition:fill .2s,transform .2s}
 #app .hud-hearts svg.empty{fill:#0b2a2866;transform:scale(.82)}
 #app .hud-hearts.danger svg:not(.empty){animation:hud-beat .7s ease-in-out infinite}
@@ -35,10 +35,10 @@ body.playing #arena{touch-action:none}
 #app .obj i{font-style:normal;font-weight:700;opacity:.86}
 #app .obj.parcel.on{background:#2f6b4ae6;border-color:#b8e994}
 #app #score{grid-area:score;justify-self:end;font:30px/1 var(--display);letter-spacing:.01em;text-shadow:0 2px 0 #0b2a28;transform-origin:100% 50%}
-#app #score.bump{animation:hud-pop .3s cubic-bezier(.2,1.6,.4,1)}
+#app #score.bump{animation:hud-score-pop .3s cubic-bezier(.2,1.6,.4,1)}
 
 /* ---- bonus stack meter ------------------------------------------------- */
-#app .stack{grid-area:stack;justify-self:end;display:flex;align-items:center;gap:6px;--tier-color:#fff4db;pointer-events:auto}
+#app .stack{grid-area:stack;justify-self:end;display:flex;align-items:center;gap:6px;--tier-color:#fff4db;pointer-events:auto;padding:4px 0 12px;margin:-4px 0 -12px}
 #app .stack[hidden]{display:none}
 #app .stack[data-tier="2"]{--tier-color:#fff0a8}
 #app .stack[data-tier="5"]{--tier-color:#ffd75e}
@@ -65,7 +65,8 @@ body.playing #arena{touch-action:none}
 #app .layer.cooling{opacity:.4}
 #app button.layer{pointer-events:auto;color:inherit;font:inherit;padding:0;margin:0;touch-action:manipulation;cursor:pointer}
 #app .layer.power.ready{opacity:1;border-color:#fff4db;background:#2f7f6ef2;animation:hud-ready 1s ease-in-out infinite}
-#app button.obj{pointer-events:auto;color:inherit;font-family:inherit;touch-action:manipulation;cursor:pointer;min-height:34px;padding:0 12px;border-radius:17px}
+#app button.obj{position:relative;pointer-events:auto;color:inherit;font-family:inherit;touch-action:manipulation;cursor:pointer;min-height:34px;padding:0 12px;border-radius:17px}
+#app button.obj::after{content:'';position:absolute;inset:-6px -5px}
 #app button.obj.spent{opacity:.5}
 
 /* ---- timer, callout, tip ------------------------------------------------- */
@@ -127,8 +128,9 @@ body.playing #arena{touch-action:none}
  #app .hud-top{top:calc(6px + var(--safe-t))}
  #app .result-card{max-width:560px}
 }
-/* A wide phone on its side fits everything on one line; a narrower one keeps two rows. */
-@media (max-height:560px) and (orientation:landscape) and (min-width:761px){
+/* A phone on its side keeps two steady rows: one line needs about 900 px clear
+   of the notch, and a HUD that changes height mid-run is worse than a taller one. */
+@media (max-height:560px) and (orientation:landscape) and (min-width:1024px){
  #app .hud-top{grid-template:"pause id obj stack timer score" auto / auto auto minmax(0,1fr) auto auto auto}
  #app .hud-objectives{justify-content:flex-start}
  #app .layer{width:56px}
@@ -141,6 +143,7 @@ body.playing #arena{touch-action:none}
 
 /* ---- motion ----------------------------------------------------------------- */
 @keyframes hud-pop{0%{transform:scale(.7)}60%{transform:scale(1.22)}100%{transform:scale(1)}}
+@keyframes hud-score-pop{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
 @keyframes hud-lost{0%{transform:scale(1.5);fill:#fff}100%{transform:scale(.82)}}
 @keyframes hud-beat{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
 @keyframes hud-tick{0%{transform:scale(1.35)}100%{transform:scale(1)}}
@@ -163,7 +166,8 @@ body.playing #arena{touch-action:none}
  #app .result-record{font-size:11px}
  #app .result-card .eyebrow,#app .pause-card .eyebrow{font-size:11px}
  #app .result-card .secondary,#app .pause-card .secondary{min-height:46px;font-size:13px}
- #app .result-foot .text-button{font-size:13px;padding:8px 2px}
+ #app .result-foot .text-button{font-size:13px;padding:8px 2px;min-height:44px}
+ #app .result-card .primary{min-height:44px}
  #app .pause-card p{font-size:14px}
 }
 @media (max-height:560px) and (orientation:landscape){
@@ -175,6 +179,11 @@ body.playing #arena{touch-action:none}
  #app .result-stats{padding:8px 0}
  #app .reward-line{margin:10px 0}
  #app .result-card .button-pair{margin-top:8px}
+}
+
+@media (max-height:600px) and (orientation:portrait){
+ #app .result-line{display:none}
+ #app .result-card h2{font-size:25px;margin:4px 0}
 }
 
 /* Trail Scout keeps its corner map clear: messages rise from the bottom instead. */
@@ -189,6 +198,8 @@ body.playing #arena{touch-action:none}
 /* On its side there is little height to spare, so they run wide and low. */
 @media (max-height:560px) and (orientation:landscape){
  #app[data-activity=scout] .hud-callout{bottom:calc(50px + var(--safe-b));max-width:min(84%,600px);font-size:14px;padding:7px 14px}
+ #app[data-activity=scout] .coach{bottom:calc(112px + var(--safe-b))}
+ #app[data-activity=platform] .coach{bottom:calc(38% + var(--safe-b))}
 }
 
 /* ---- backup by text --------------------------------------------------------------- */
@@ -201,7 +212,9 @@ body.playing #arena{touch-action:none}
  #app .level-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:760px),(max-height:560px) and (orientation:landscape){
- #app .wordmark small{font-size:8px;letter-spacing:1.6px}
+ #app .wordmark small{font-size:11px;letter-spacing:.3px}
+ #app .topnav button{font-size:12px;min-height:44px}
+ #app .hero-world>span,#app .hero-world small{font-size:11px}
  #app .top-actions .icon-button{width:44px;height:44px;min-width:44px}
  #app .top-actions .icon-button svg{width:20px;height:20px}
  #app .eyebrow{font-size:11px;letter-spacing:.08em}
@@ -212,7 +225,7 @@ body.playing #arena{touch-action:none}
  #app .crew-choice strong{font-size:13px}
  #app .crew-choice small{font-size:11px;line-height:1.25}
  #app .crew-check{font-size:11px}
- #app .pill-button{min-height:40px}
+ #app .pill-button{min-height:44px}
  #app .pill-button span{font-size:12px}
  #app .world-tab{min-height:56px}
  #app .world-tab strong{font-size:13px}
@@ -230,15 +243,18 @@ body.playing #arena{touch-action:none}
  #app .daily-card p,#app .quest-preview p{font-size:13px;line-height:1.45}
  #app .daily-card .secondary{font-size:13px;min-height:46px}
  #app .mobile-nav button{font-size:13px;min-height:50px}
+ @media (max-width:359px){#app .mobile-nav{gap:6px;flex-wrap:wrap}#app .mobile-nav button{padding-left:7px;padding-right:7px;gap:4px}}
  #app .below-game p{font-size:13px}
  #app .below-game span{font-size:12px}
- #app .below-game button{font-size:12px;min-height:40px;padding:8px 10px}
+ #app .below-game button{font-size:12px;min-height:44px;padding:8px 10px}
  #app .hero-note span{font-size:11px}
  .panel-dialog .record-note,.panel-dialog .key-help{font-size:12px;line-height:1.5}
  .panel-dialog .stack-example span,.panel-dialog .stack-example b,.panel-dialog .stack-example strong{font-size:11px}
  .panel-dialog kbd{font-size:11px}
  .panel-dialog .setting small{font-size:12px;line-height:1.4}
  .panel-dialog .icon-button{width:44px;height:44px;min-width:44px}
+ .panel-dialog .quest-card>small,.panel-dialog .quest-card footer,.panel-dialog .quest-world-label span,.panel-dialog .record-card span,.panel-dialog .sticker strong,.panel-dialog .family-records strong,.panel-dialog .family-records span,.panel-dialog .charm-card p,.panel-dialog .charm-card small,.panel-dialog .loadout-slots>span{font-size:11px}
+ .panel-dialog .secondary{min-height:44px}
 }
 @media (max-width:760px),(max-height:560px) and (orientation:landscape){
  #app .quest-preview button{min-width:44px;min-height:44px}
@@ -249,9 +265,16 @@ body.playing #arena{touch-action:none}
  #app .coach-tip{max-width:46%;font-size:13px}
  #app .coach-tip small{display:none}
 }
-#app .toast{font-size:13px;bottom:calc(24px + var(--safe-b));z-index:60}
+#app .toast{position:fixed;font-size:13px;bottom:calc(24px + var(--safe-b));z-index:60}
 
 /* ---- Camp Pairs sits directly under the HUD --------------------------------------- */
 #app[data-activity=memory] .hud::before{height:calc(var(--hud-h,110px) + 6px)}
 #app #memory-board{padding-top:calc(var(--hud-h,110px) + 6px)}
 @media (min-width:761px) and (min-height:561px){#app #memory-board{padding-bottom:18px}}
+
+/* ---- a notch at the side: camp and panels keep clear of it ----------------------- */
+/* Side safe areas only exist on a phone held sideways. A run still fills the screen. */
+@media (max-height:560px) and (orientation:landscape){
+ body:not(.playing) #app{padding-left:max(22px,var(--safe-l));padding-right:max(22px,var(--safe-r))}
+}
+#app .panel-dialog{max-width:calc(100% - 18px - var(--safe-l) - var(--safe-r))}

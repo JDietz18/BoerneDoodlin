@@ -173,3 +173,62 @@ test('the play field is the controller: thumbs are tracked alone and every gestu
   controls.draw({ save() { depth++; }, restore() { depth--; }, beginPath() {}, arc() {}, stroke() {}, fill() {}, moveTo() {}, lineTo() {} });
   assert.equal(depth, 0); controls.clear(); assert.equal(controls.busy, false); assert.deepEqual(controls.dir, { x: 0, y: 0 });
 });
+
+test('return strokes, slips, diagonals and resting hands are not mistaken for gestures', () => {
+  const calls = [], field = fakeField(), road = fakeField(); let clock = 0;
+  const log = name => (...args) => calls.push([name, ...args]);
+  const controls = new Controls({ canvas: field, rallyCanvas: road, now: () => clock, on: { direction: log('dir'), jump: log('jump'), releaseJump: log('release'), drop: log('drop'), power: log('power'), hint: log('hint'), tap: log('tap'), steer: log('steer'), brake: log('brake'), fieldX: log('field') } });
+  const count = name => calls.filter(call => call[0] === name).length;
+  const stroke = (target, id, points) => { for (const [at, x, y] of points) { clock = at; target.fire('pointermove', { pointerId: id, clientX: x, clientY: y }); } };
+
+  // Platform: a flick up and the thumb's way back down is one power and no drop.
+  controls.configure('platform'); controls.active = true; clock = 1000;
+  field.fire('pointerdown', { pointerId: 1, clientX: 80, clientY: 540 });
+  stroke(field, 1, [[1000, 80, 540], [1045, 81, 500], [1090, 82, 470], [1150, 82, 470], [1200, 82, 505], [1260, 82, 540]]);
+  assert.equal(count('power'), 1); assert.equal(count('drop'), 0, 'coming back from a flick is not a pull down');
+  stroke(field, 1, [[1300, 82, 600]]); assert.equal(count('drop'), 1, 'going on past where the flick began is');
+  field.fire('pointerup', { pointerId: 1 });
+  // And the reverse: a pull down and the way back up is one drop and no power.
+  clock = 2000; field.fire('pointerdown', { pointerId: 2, clientX: 80, clientY: 400 });
+  stroke(field, 2, [[2000, 80, 400], [2040, 81, 440], [2080, 82, 470], [2150, 82, 430], [2220, 82, 400]]);
+  assert.equal(count('drop'), 2); assert.equal(count('power'), 1, 'coming back from a pull down is not a flick');
+  field.fire('pointerup', { pointerId: 2 });
+  // A hand gripping the very edge is not the run thumb: the next finger on the left runs instead of jumping.
+  calls.length = 0; clock = 3000; field.fire('pointerdown', { pointerId: 3, clientX: 3, clientY: 300 });
+  field.fire('pointerdown', { pointerId: 4, clientX: 100, clientY: 500 }); stroke(field, 4, [[3050, 140, 500]]);
+  assert.deepEqual(controls.dir, { x: 1, y: 0 }); assert.equal(count('jump'), 0);
+  field.fire('pointerup', { pointerId: 4 }); field.fire('pointerup', { pointerId: 3 });
+
+  // RV Rally: easing off a pull-back brake is not a boost.
+  controls.configure('rally'); controls.active = true; calls.length = 0; clock = 5000;
+  road.fire('pointerdown', { pointerId: 1, clientX: 200, clientY: 400 });
+  stroke(road, 1, [[5050, 200, 430], [5100, 200, 470]]); assert.equal(controls.braking, true);
+  stroke(road, 1, [[5800, 200, 470], [5850, 200, 435], [5900, 200, 400]]);
+  assert.equal(controls.braking, false); assert.equal(count('power'), 0, 'letting the brake go does not boost');
+  stroke(road, 1, [[6400, 200, 400], [6460, 200, 340]]); assert.equal(count('power'), 1, 'a real flick afterwards still does');
+  // A finger left resting takes the wheel once it starts to steer.
+  road.fire('pointerdown', { pointerId: 2, clientX: 320, clientY: 500 }); assert.equal(controls.braking, true);
+  road.fire('pointerup', { pointerId: 1 }); assert.equal(controls.braking, true, 'a resting second finger keeps braking');
+  stroke(road, 2, [[7000, 360, 500]]); assert.equal(controls.braking, false); assert.equal(controls.steering, 0);
+  stroke(road, 2, [[7050, 400, 500]]); assert.equal(controls.steering, .5, 'and then steers from where it took over');
+  road.fire('pointerup', { pointerId: 2 }); assert.equal(controls.steering, null);
+
+  // Trail Scout: a diagonal drag keeps one direction instead of flickering between two.
+  controls.configure('scout'); controls.active = true; calls.length = 0; clock = 9000;
+  field.fire('pointerdown', { pointerId: 1, clientX: 200, clientY: 300 });
+  for (let i = 1; i <= 14; i++) { clock += 40; field.fire('pointermove', { pointerId: 1, clientX: 200 + i * 14 + (i % 2 ? 1.5 : -1.5), clientY: 300 + i * 14 + (i % 2 ? -1.5 : 1.5) }); }
+  const turns = calls.filter(call => call[0] === 'dir' && (call[1] || call[2])).length;
+  assert.ok(turns >= 1 && turns <= 2, `a 45 degree drag changed direction ${turns} times`);
+  stroke(field, 1, [[clock + 60, controls.pointers.get(1).x, controls.pointers.get(1).y + 70]]); assert.deepEqual(controls.dir, { x: 0, y: 1 }, 'a real turn still turns');
+  field.fire('pointerup', { pointerId: 1 });
+  // A tap whose finger slips a little still walks to the tile it landed on; a long wander does nothing.
+  calls.length = 0; clock = 12000; field.fire('pointerdown', { pointerId: 2, clientX: 90, clientY: 120 });
+  stroke(field, 2, [[12040, 104, 122]]); clock = 12060; field.fire('pointerup', { pointerId: 2, clientX: 104, clientY: 122 });
+  assert.deepEqual(calls.filter(call => call[0] === 'tap'), [['tap', 90, 120]]);
+  calls.length = 0; clock = 13000; field.fire('pointerdown', { pointerId: 3, clientX: 90, clientY: 120 });
+  stroke(field, 3, [[13400, 104, 122]]); clock = 14300; controls.update(.5); field.fire('pointerup', { pointerId: 3, clientX: 104, clientY: 122 });
+  assert.deepEqual(calls, [], 'a press that wandered and lingered is neither a tap nor a hint');
+  // A hand resting on the edge never spends a hint.
+  clock = 15000; field.fire('pointerdown', { pointerId: 4, clientX: 396, clientY: 300 }); clock = 17000; controls.update(1); controls.update(1);
+  assert.equal(count('hint'), 0); field.fire('pointerup', { pointerId: 4 });
+});

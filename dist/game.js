@@ -28,7 +28,7 @@ try{const saved=JSON.parse(storage?.getItem(PREFS_KEY)||'{}');for(const key of [
 function savePrefs(){try{storage?.setItem(PREFS_KEY,JSON.stringify(prefs));}catch{/* session only */}}
 const haptics=new Haptics({enabled:prefs.haptics}),hud=new Hud($);
 const coarsePointer=window.matchMedia('(pointer:coarse)');
-let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,wantAwake=false,wakePending=false,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='',tipTime=0,rallyStartX=0;
+let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,wantAwake=false,wakePending=false,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='',tipTime=0,rallyStartX=0,rallyLastDx=0,resultAt=-1e9,pausedAt=-1e9;
 const engines={platform:new PlatformRun({onEvent:onGameEvent}),scout:new ScoutRun({onEvent:onGameEvent}),snack:new SnackStorm({onEvent:onGameEvent}),rally:new RallyRun({onEvent:onGameEvent})};
 const held=new Set(),fxCanvas=$('celebrations'),fxContext=fxCanvas.getContext('2d');
 let fxW=0,fxH=0,fxDpr=1;
@@ -39,7 +39,8 @@ const level=id=>LEVELS.find(l=>l.id===id);
 function nextLevel(worldIndex=journey.state.selectedWorld){return LEVELS.find(l=>l.worldIndex===worldIndex&&journey.state.levels[l.id].unlocked&&!journey.state.levels[l.id].completed)||LEVELS.find(l=>l.worldIndex===worldIndex&&journey.state.levels[l.id].unlocked)||LEVELS[0];}
 function continueLevel(){const pending=Object.keys(journey.state.checkpoints).filter(id=>journey.state.levels[id]?.unlocked);return level(pending.find(id=>level(id).worldIndex===journey.state.selectedWorld)||'')||nextLevel();}
 function persist(){const ok=saveJourney(storage,journey);$('save-status').textContent=ok?'Saved on this device':'Session only · export a backup';if(!ok&&!storageWarned){storageWarned=true;toast('This browser is blocking saves. Export a backup from your passport before you leave.');}return ok;}
-function toast(text){clearTimeout(toastTimer);$('toast').textContent=text;$('toast').classList.add('visible');toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3500);}
+// Messages float over whatever is in front: the open panel, or else the page.
+function toast(text){clearTimeout(toastTimer);const host=$('panel-dialog').open?$('panel-dialog'):$('app');if($('toast').parentElement!==host)host.appendChild($('toast'));$('toast').textContent=text;$('toast').classList.add('visible');toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3500);}
 function callout(text,duration=2300){if(!text)return;clearTimeout(calloutTimer);$('run-callout').textContent=text;$('run-callout').classList.add('visible');calloutTimer=setTimeout(()=>$('run-callout').classList.remove('visible'),duration);}
 function announce(text){$('accessible-status').textContent=text;}
 function paintPortraits(){if(ready)document.querySelectorAll('canvas[data-portrait]').forEach(c=>renderer.portrait(c,c.dataset.portrait));}
@@ -121,7 +122,9 @@ function startRun(selection={mode:'platform',levelId:continueLevel().id},{fresh=
  announce(`${modeNames[config.mode]} in ${WORLDS[config.worldIndex].name}.`);
 }
 function saveCheckpoint(){if(run?.runMode==='platform'&&!currentConfig?.dailyDate&&!currentConfig?.remix&&['running','paused'].includes(run.mode)&&run.time>1){journey.saveCheckpoint(run.levelId,run.snapshot());persist();}}
-function pause(){if(screen!=='run')return;run.pause();saveCheckpoint();audio.suspend();setScreen('paused');renderer.portrait($('pause-portrait'),run.characterId||currentConfig.characterId);$('pause-detail').textContent=resumable()?'Your position and discoveries are saved. Ready when you are.':'The clock has stopped. Take all the time you need.';$('resume-button').focus({preventScroll:true});announce('Adventure paused.');}
+// `surprise` marks a pause the player did not ask for (a call, a turn of the phone).
+// Its card waits a little longer before it takes a tap, because a thumb may be mid-jump.
+function pause(surprise=false){if(screen!=='run')return;pausedAt=performance.now()-(surprise===true?0:350);run.pause();saveCheckpoint();audio.suspend();setScreen('paused');renderer.portrait($('pause-portrait'),run.characterId||currentConfig.characterId);$('pause-detail').textContent=resumable()?'Your position and discoveries are saved. Ready when you are.':'The clock has stopped. Take all the time you need.';$('resume-button').focus({preventScroll:true});announce('Adventure paused.');}
 function resume(){if(screen!=='paused')return;gestureAudio();run.resume();setScreen('run');controls.calibrateTilt();frameTime=performance.now();audio.setScene('run',currentConfig.worldIndex);if(currentConfig.mode==='memory')memoryGame.focus();else (currentConfig.mode==='rally'?$('rally-canvas'):$('game')).focus({preventScroll:true});}
 // A fresh mini-game deals a fresh board; platform levels and dailies keep their layout.
 function restart({remix=false}={}){if(!currentConfig)return;if(run&&['run','paused'].includes(screen)&&!finishing){run.pause();if(!resumable())bankUnfinished();}const reroll=remix||(currentConfig.mode!=='platform'&&!currentConfig.dailyDate),c={...currentConfig,seed:reroll?undefined:currentConfig.seed,remix:remix||currentConfig.remix};startRun(c,{fresh:true});}
@@ -146,18 +149,19 @@ function finishGame(summary){
  finaleTimer=reduced()?.05:lastResult.won?(lastResult.mode==='memory'?1.35:1.15):.8;setScreen('finale');
 }
 function showResult(){
- if(screen!=='finale')return;setScreen('result');renderResult();audio.setScene('result',currentConfig.worldIndex);
+ if(screen!=='finale')return;setScreen('result');resultAt=performance.now();renderResult();audio.setScene('result',currentConfig.worldIndex);
  if(lastResult.won)celebrations.burst({x:.5,y:.24,kind:lastReward.newBest?'record':'win'});
  if(lastReward.questRewards.length){audio.play('mission');celebrations.burst({x:.3,y:.45,kind:'star'});}announce(`${lastResult.won?'Adventure complete':'Good try'}. ${num(lastResult.score)} points and ${lastReward.earnedTreats} treats earned.`);
  resultStep=animateResult($('result-content'),{reduced:reduced(),onTick:()=>audio.play('count-up'),onMedal:index=>{audio.play('medal',{index});haptics.pulse('medium');}});
- $('result-content').querySelector('.primary')?.focus({preventScroll:true});
+ const card=$('result-content'),main=card.querySelector('.primary');card.scrollTop=0;main?.focus({preventScroll:true});
+ if(main&&main.getBoundingClientRect().bottom>card.getBoundingClientRect().bottom)main.scrollIntoView({block:'end'});
 }
 function renderResult(){
  const r=lastResult,p=lastReward,platform=r.mode==='platform'&&journey.state.levels[r.levelId]?.unlocked===true,next=platform&&r.won?LEVELS.find(l=>l.worldIndex===r.worldIndex&&journey.state.levels[l.id].unlocked&&!journey.state.levels[l.id].completed):null;
  const title=r.won?({platform:'Pawsitively onward!',scout:'A nose for adventure.',rally:'What a lovely detour.',snack:'A very snacky forecast.',memory:'A perfect little match.'}[r.mode]):r.mode==='memory'?'One more little flip?':'Good paws. Fresh start.';
  const rewards=[...(p.unlockedWorlds||[]).map(w=>`${w.name} is open!`),...(p.unlockedCharms||[]).map(c=>`${c.name} earned.`),...(p.questRewards||[]).map(q=>`${q.name}: +${q.reward} treats.`),...(p.dailyBonus?[`Daily bonus: +${p.dailyBonus} treats.`]:[])];
  const medals=platform?`<div class="result-medals">${[1,2,3].map(n=>icon('star',n<=p.medals?'earned':'')).join('')}</div>`:`<div class="result-medals">${icon(r.won?'trophy':'paw','earned')}</div>`;
- $('result-content').innerHTML=`${medals}${p.newBest?'<span class="result-record">A NEW PERSONAL BEST</span>':''}<span class="eyebrow">${esc(WORLDS[r.worldIndex].name)} · ${esc(modeNames[r.mode])}</span><h2>${title}</h2><p class="result-line">${r.won?platform?`${esc(level(r.levelId).title)} is in the passport. There’s always another little path to explore.`:'Every little detour brings something good back to camp.':`The treats you found are safely in your backpack. ${r.mode==='platform'?'Try another route, change your charms, or have a quick mini-game break.':'Your next attempt is a fresh chance to find your rhythm.'}`}</p><div class="result-stats"><div><strong data-count="${Math.round(r.score)||0}">${num(r.score)}</strong><span>POINTS</span></div><div><strong data-count="${Math.round(r.treats)||0}">${num(r.treats)}</strong><span>TREATS FOUND</span></div><div><strong>${r.bestMultiplier||1}×</strong><span>BIGGEST STACK</span></div></div>${platform?`<div class="result-goals">${p.medalGoals.map(g=>`<span class="${g.earned?'done':''}">${g.earned?'✓ ':''}${esc(g.label)}</span>`).join('')}</div>`:''}<p class="reward-line">+<span data-count="${Math.round(p.earnedTreats)||0}">${num(p.earnedTreats)}</span> treats in your backpack${p.newMedals?` · +${p.newMedals} new medals`:''}</p>${rewards.length?`<p class="result-unlocks">${rewards.slice(0,4).map(esc).join('<br>')}</p>`:''}<button class="primary" data-result-action="${next?'next':'retry'}" ${next?`data-next-level="${next.id}"`:''}>${next?'The next little adventure':'Let’s do it again'} ${icon('arrow')}</button><div class="button-pair"><button class="secondary" data-result-action="${platform&&!currentConfig.dailyDate?'remix':'gear'}">${platform&&!currentConfig.dailyDate?'Remix this trail':'Visit the backpack'}</button><button class="secondary" data-result-action="home">Back to camp</button></div><div class="result-foot"><button class="text-button" data-result-action="quests">Check the quest board</button><button class="text-button" data-result-action="map">Explore the worlds</button></div>`;
+ $('result-content').innerHTML=`${medals}${p.newBest?'<span class="result-record">A NEW PERSONAL BEST</span>':''}<span class="eyebrow">${esc(WORLDS[r.worldIndex].name)} · ${esc(modeNames[r.mode])}</span><h2>${title}</h2><p class="result-line">${r.won?platform?`${esc(level(r.levelId).title)} is in the passport. There’s always another little path to explore.`:'Every little detour brings something good back to camp.':`The treats you found are safely in your backpack. ${r.mode==='platform'?'Try another route, change your charms, or have a quick mini-game break.':'Your next attempt is a fresh chance to find your rhythm.'}`}</p><div class="result-stats"><div><strong data-count="${Math.round(r.score)||0}">${num(r.score)}</strong><span>POINTS</span></div><div><strong data-count="${Math.round(r.treats)||0}">${num(r.treats)}</strong><span>TREATS FOUND</span></div><div><strong>${r.bestMultiplier||1}×</strong><span>BIGGEST STACK</span></div></div>${platform?`<div class="result-goals">${p.medalGoals.map(g=>`<span class="${g.earned?'done':''}">${g.earned?'✓ ':''}${esc(g.label)}</span>`).join('')}</div>`:''}<p class="reward-line">+<span data-count="${Math.round(p.earnedTreats)||0}">${num(p.earnedTreats)}</span> ${Math.round(p.earnedTreats)===1?'treat':'treats'} in your backpack${p.newMedals?` · +${p.newMedals} new medals`:''}</p>${rewards.length?`<p class="result-unlocks">${rewards.slice(0,4).map(esc).join('<br>')}</p>`:''}<button class="primary" data-result-action="${next?'next':'retry'}" ${next?`data-next-level="${next.id}"`:''}>${next?'The next little adventure':'Let’s do it again'} ${icon('arrow')}</button><div class="button-pair"><button class="secondary" data-result-action="${platform&&!currentConfig.dailyDate?'remix':'gear'}">${platform&&!currentConfig.dailyDate?'Remix this trail':'Visit the backpack'}</button><button class="secondary" data-result-action="home">Back to camp</button></div><div class="result-foot"><button class="text-button" data-result-action="quests">Check the quest board</button><button class="text-button" data-result-action="map">Explore the worlds</button></div>`;
 }
 const HAPTIC={'double-jump':'light',stomp:'stomp',smash:'stomp',pop:'light',hit:'hit',crash:'hit',shield:'medium',key:'gold',checkpoint:'medium',secret:'gold','boss-defeated':'success',power:'power',fever:'power','gold-rush':'gold',spring:'light',vent:'medium',block:'light',chest:'medium',match:'light',mismatch:'medium',deliver:'success',treasure:'gold',parcel:'medium','near-miss':'light',respawn:'light',
  flip:'tap',peek:'light',streak:'gold',swap:'medium','swap-done':'light','time-up':'medium','perfect-game':'max',go:'medium',ramp:'medium',landing:'medium',splash:'light',convoy:'success','final-push':'medium','finish-line':'success',bounce:'light',bloom:'medium',golden:'gold',trail:'light','trail-complete':'success',critter:'gold','paw-reveal':'light',paw:'success',greet:'light',bump:'tap'};
@@ -241,7 +245,7 @@ function updateCoach(dt){
 }
 function questHTML(worldIndex){return journey.questProgress(worldIndex).map(q=>`<article class="quest-card ${q.completed?'completed':''}"><small>${esc(CHARACTERS[q.character].name)} ${q.completed?'· FAVOR COMPLETE':'HAS A LITTLE FAVOR'}</small><h3>${esc(q.name)}</h3><p>${esc(q.description)}</p><div class="quest-track"><i style="width:${clamp(q.progress/q.target,0,1)*100}%"></i></div><footer><span>${q.completed?'✓ Complete':`${num(q.progress)} / ${q.target}`}</span><span>${q.completed?'Reward in your backpack':`+${q.reward} treats`}</span></footer></article>`).join('');}
 function openPanel(panel){
- if(screen==='run')pause();activePanel=panel;const s=journey.state;let title='',html='';
+ const fresh=activePanel!==panel||!$('panel-dialog').open;if(screen==='run')pause();activePanel=panel;const s=journey.state;let title='',html='';
  if(panel==='quests'){
   title='Good friends. Little favors.';html=`<p class="panel-intro">Twenty side quests, one very helpful crew. Explore, stomp, match, steer, and stack bonuses. Quest rewards land in your backpack after each outing.</p>${WORLDS.map(w=>`<div class="quest-world-label"><h3>${w.index+1}. ${w.name}</h3><span>${journey.questProgress(w.index).filter(q=>q.completed).length}/4 complete</span></div><div class="quest-grid">${questHTML(w.index)}</div>`).join('')}`;
  }else if(panel==='gear'){
@@ -256,7 +260,7 @@ function openPanel(panel){
  }else if(panel==='share'){
   title='Invite a fellow adventurer.';html=`<p class="panel-intro">One good dog, the whole crew, and a road full of little adventures.</p><input class="share-url" id="share-url" readonly value="${esc(location.origin+'/')}" aria-label="Game link"><div class="export-row"><button class="secondary" id="copy-link">Copy game link</button></div>`;
  }
- $('panel-title').textContent=title;$('panel-content').innerHTML=html;if(!$('panel-dialog').open){$('panel-dialog').showModal();audio.play('ui-open');}paintPortraits();
+ $('panel-title').textContent=title;$('panel-content').innerHTML=html;if(!$('panel-dialog').open){$('panel-dialog').showModal();audio.play('ui-open');}if(fresh)$('panel-dialog').scrollTop=0;paintPortraits();
 }
 const backupText=()=>JSON.stringify({game:'Doodle Onward',exportedAt:new Date().toISOString(),journey:journey.serialize()},null,2);
 // Replaces this device's progress with a backup. The old run is detached
@@ -271,8 +275,8 @@ function closePanel(){if($('panel-dialog').open){$('panel-dialog').close();audio
 function goMap(){if(screen!=='home')home();closePanel();$('world-map').scrollIntoView({behavior:reduced()?'instant':'smooth',block:'start'});}
 async function share(){const text='Thirty little adventures, top-down treasure trails, 3D rallies, and big snack stacks. Doodle Onward with Griffin and friends!';if(navigator.share){try{await navigator.share({title:'Doodle Onward',text,url:location.origin+'/'});return;}catch(e){if(e.name==='AbortError')return;}}openPanel('share');}
 function inputJump(){if(screen==='run'&&currentConfig.mode==='platform'){if(run.jump())haptics.pulse('tap');}}
-function inputPower(){if(screen!=='run'||currentConfig.mode==='memory')return;gestureAudio();if(!run.power?.())toast('Collect treats to fill your power meter.');}
-function inputHint(){if(screen!=='run'||currentConfig.mode!=='scout')return;if(run.hint())haptics.pulse('medium');else toast('Your three trail hints are used. Follow your nose from here.');}
+function inputPower(){if(screen!=='run'||currentConfig.mode==='memory')return;gestureAudio();if(!run.power?.()&&!(run.powerTime>0))toast('Collect treats to fill your power meter.');}
+function inputHint(){if(screen!=='run'||currentConfig.mode!=='scout'||run.hintTime>6)return;if(run.hint())haptics.pulse('medium');else toast('Your three trail hints are used. Follow your nose from here.');}
 function inputInteract(){if(screen!=='run')return;const worked=run.interact?.();if(!worked&&!run.interaction)callout('Get a little closer to a chest, sign, or neighbor.',1500);}
 function updateMovement(){
  if(screen!=='run'||currentConfig.mode==='memory')return;const m=currentConfig.mode,k=key=>held.has(key)?1:0;
@@ -280,7 +284,7 @@ function updateMovement(){
  if(m==='scout')run.move(dx,dy);
  else if(m==='rally'){
   const drag=controls.drag,scale=(rallyRenderer?.pixelsPerUnit||40)*.6;
-  if(drag&&!dx&&run.steerTo)run.steerTo(rallyStartX+drag.dx/scale);
+  if(drag&&!dx&&run.steerTo){rallyStartX=clamp(rallyStartX+(drag.dx-rallyLastDx)/scale,-3.9,3.9);rallyLastDx=drag.dx;run.steerTo(rallyStartX);}
   else{const tilt=controls.tilt?.seen?controls.tilt.value:0;run.move(dx||(drag?controls.steering:tilt)||0);}
   run.brake(k('down')>0||controls.braking);
  }
@@ -299,7 +303,7 @@ const controls=new Controls({canvas:$('game'),rallyCanvas:$('rally-canvas'),on:{
  direction:(x,y)=>{if(screen==='run'&&currentConfig.mode==='scout'&&(x||y))haptics.pulse('tap');updateMovement();},
  jump:inputJump,releaseJump:()=>run?.releaseJump?.(),drop:()=>{if(screen==='run'&&currentConfig.mode==='platform')run.drop?.();},
  power:inputPower,hint:inputHint,
- brake:()=>updateMovement(),steerStart:()=>{rallyStartX=run?.player?.x||0;},steer:value=>{if(value===null&&screen==='run'&&currentConfig.mode==='rally')run.steerTo?.(null);updateMovement();},
+ brake:()=>updateMovement(),steerStart:()=>{rallyStartX=run?.player?.x||0;rallyLastDx=0;},steer:value=>{if(value===null&&screen==='run'&&currentConfig.mode==='rally')run.steerTo?.(null);updateMovement();},
  fieldX:fraction=>{if(fraction===null||screen!=='run'||currentConfig.mode!=='snack')return;if(run.dragTo&&renderer.stormWorldX)run.dragTo(renderer.stormWorldX(fraction*renderer.width));else run.moveTo(fraction*1120);},
  tap:(x,y)=>{if(screen==='run'&&currentConfig.mode==='scout')scoutTap(x,y);}
 }});
@@ -325,8 +329,14 @@ function chipAction(target){
  if(target.closest('#hint-chip')){inputHint();return true;}
  return false;
 }
-$('run-ui').addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||screen!=='run'||!e.target.closest(CHIPS))return;chipTouch=performance.now();chipAction(e.target);});
-$('run-ui').addEventListener('touchend',e=>{if(e.cancelable&&e.target.closest(CHIPS))e.preventDefault();},{passive:false});
+// A thumb aiming at the power layer in a moving car gets a little grace around it.
+function chipUnder(e){
+ const hit=e.target.closest(CHIPS);if(hit||!e.target.closest('#bonus-stack'))return hit;
+ const power=document.querySelector('#bonus-stack [data-layer=power]'),r=power?.getBoundingClientRect();
+ return r&&e.clientX>=r.left-10&&e.clientX<=r.right+10&&e.clientY>=r.top-10&&e.clientY<=r.bottom+10?power:null;
+}
+$('run-ui').addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||screen!=='run')return;const chip=chipUnder(e);if(!chip)return;chipTouch=performance.now();chipAction(chip);});
+$('run-ui').addEventListener('touchend',e=>{if(e.cancelable&&e.target.closest(`${CHIPS},#bonus-stack`))e.preventDefault();},{passive:false});
 $('run-ui').addEventListener('click',e=>{
  if(performance.now()-chipTouch<700||!e.target.closest(CHIPS))return;
  const pausing=!!e.target.closest('#pause-button');chipAction(e.target);
@@ -351,7 +361,15 @@ window.addEventListener('keydown',e=>{
  if(e.code==='KeyX')inputPower();if(e.code==='KeyH')inputHint();if(e.code==='KeyE'||e.code==='Enter')inputInteract();
 });
 window.addEventListener('keyup',e=>{if(keyDirection[e.code])held.delete(keyDirection[e.code]);updateMovement();if(['Space','ArrowUp','KeyW'].includes(e.code)&&currentConfig?.mode==='platform')run?.releaseJump?.();});
-$('play-button').addEventListener('click',()=>startRun({mode:'platform',levelId:continueLevel().id}));$('daily-button').addEventListener('click',()=>startRun(journey.getDailyChallenge()));$('home-button').addEventListener('click',()=>screen==='run'?pause():home());$('resume-button').addEventListener('click',resume);$('restart-button').addEventListener('click',()=>restart());$('quit-button').addEventListener('click',home);$('sound-button').addEventListener('click',toggleSound);$('help-button').addEventListener('click',()=>openPanel('help'));$('install-button').addEventListener('click',()=>openPanel('install'));$('share-button').addEventListener('click',share);$('close-dialog').addEventListener('click',closePanel);$('reload-button').addEventListener('click',()=>location.reload());
+$('play-button').addEventListener('click',()=>startRun({mode:'platform',levelId:continueLevel().id}));$('daily-button').addEventListener('click',()=>startRun(journey.getDailyChallenge()));$('home-button').addEventListener('click',()=>screen==='run'?pause():home());// A thumb that was mid-tap when the game paused must not press a button it never saw.
+const pauseSettled=e=>!(e.detail>0&&performance.now()-pausedAt<600);
+$('resume-button').addEventListener('click',e=>{if(pauseSettled(e))resume();});$('restart-button').addEventListener('click',e=>{if(pauseSettled(e))restart();});$('quit-button').addEventListener('click',e=>{if(pauseSettled(e))home();});
+// A phone sends no click while another finger rests on the glass, so the card answers the lift itself.
+$('pause-layer').addEventListener('touchend',e=>{
+ const b=e.target.closest('button'),t=e.changedTouches[0];
+ if(!b||!e.cancelable||screen!=='paused'||document.elementFromPoint(t.clientX,t.clientY)?.closest('button')!==b)return;
+ e.preventDefault();if(performance.now()-pausedAt>=600)b.click();
+},{passive:false});$('sound-button').addEventListener('click',toggleSound);$('help-button').addEventListener('click',()=>openPanel('help'));$('install-button').addEventListener('click',()=>openPanel('install'));$('share-button').addEventListener('click',share);$('close-dialog').addEventListener('click',closePanel);$('reload-button').addEventListener('click',()=>location.reload());
 document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;
  if(d.panel){gestureAudio();audio.play('click');openPanel(d.panel);}
@@ -362,7 +380,7 @@ document.addEventListener('click',async e=>{
  if(d.startMode)startRun({mode:d.startMode,worldIndex:journey.state.selectedWorld});
  if(d.upgrade){const r=journey.purchaseUpgrade(d.upgrade);persist();openPanel('gear');toast(r.message);if(r.ok)audio.play('upgrade');$('wallet').textContent=num(journey.state.wallet);}
  if(d.charm){const r=journey.equipCharm(d.charm);persist();openPanel('gear');toast(r.message);audio.play('click');}
- if(d.resultAction){const a=d.resultAction;if(a==='home')home();else if(a==='map')goMap();else if(a==='retry')restart();else if(a==='remix')restart({remix:true});else if(a==='next'){startRun({mode:'platform',levelId:d.nextLevel},{fresh:false});}else openPanel(a);}
+ if(d.resultAction){if(e.detail>0&&performance.now()-resultAt<600)return;const a=d.resultAction;if(a==='home')home();else if(a==='map')goMap();else if(a==='retry')restart();else if(a==='remix')restart({remix:true});else if(a==='next'){startRun({mode:'platform',levelId:d.nextLevel},{fresh:false});}else openPanel(a);}
  if(b.id==='copy-link'){try{await navigator.clipboard.writeText(location.origin+'/');b.textContent='Link copied';}catch{$('share-url').select();}}
  if(b.id==='export-save'){
   // Phones save most reliably through the share sheet; everything else downloads a file.
@@ -388,9 +406,9 @@ document.addEventListener('change',async e=>{
  }
 });
 $('panel-dialog').addEventListener('click',e=>{if(e.target===$('panel-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closePanel();}});
-window.addEventListener('blur',()=>{clearInputs();if(screen==='run')pause();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&screen==='run')pause();});window.addEventListener('pagehide',()=>{saveCheckpoint();persist();});
+window.addEventListener('blur',()=>{clearInputs();if(screen==='run')pause(true);});document.addEventListener('visibilitychange',()=>{if(document.hidden&&screen==='run')pause(true);});window.addEventListener('pagehide',()=>{saveCheckpoint();persist();});
 // Turning the phone reflows the field, so take a breath instead of playing through it.
-window.addEventListener('orientationchange',()=>{if(screen==='run')pause();controls.calibrateTilt();});
+window.addEventListener('orientationchange',()=>{if(screen==='run')pause(true);controls.calibrateTilt();});
 // iPhone only starts sound from a finished tap, so listen for those as well.
 for(const name of ['pointerup','touchend','click','keydown'])window.addEventListener(name,()=>{if(journey.state.settings.sound)gestureAudio();},{passive:true,capture:true});
 document.addEventListener('gesturestart',e=>{if(screen!=='home')e.preventDefault();});

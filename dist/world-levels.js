@@ -95,7 +95,7 @@ export function getLevel(id='river-1',{seed,remix=false}={}){
   if(meta.boss){
     entity('enemy',finishStart+680,432,108,96,{subtype:'boss',name:['Paddle Bandit','Acorn Guardian','Canyon Crumbler','Midnight Muncher','Welcome-Home Rumbler'][meta.worldIndex],hp:3,maxHp:3,vx:65+meta.worldIndex*7,left:finishStart+450,right:finishStart+1030,groundY:480,baseY:432,hurtTime:0});
     platform(finishStart+360,398,150);platform(finishStart+1040,398,150);
-    entity('sign',finishStart+225,390,40,60,{text:'Three stomps from above—or a well-timed power—settle the snack dispute.'});
+    entity('sign',finishStart+225,390,40,60,{text:'Three stomps from above, or one well-timed power, settle the snack dispute.'});
   }
   entity('goal',width-175,400,90,160,{requiredKeys:2,requiresBoss:meta.boss});
   // Optional extras come last and use their own random stream, so every
