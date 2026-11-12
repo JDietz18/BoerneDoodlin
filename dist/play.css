@@ -198,3 +198,8 @@ body.playing #arena{touch-action:none}
 @media (max-width:560px){
  #app[data-activity=scout] .hud-top{grid-template:"pause id id timer score" auto "obj obj obj obj obj" auto "stack stack stack stack stack" auto / auto auto minmax(0,1fr) auto auto}
 }
+
+/* ---- backup by text --------------------------------------------------------------- */
+#app~dialog .paste-row,.paste-row{display:grid;gap:10px;margin-top:10px}
+.paste-row[hidden]{display:none}
+.paste-row textarea{width:100%;box-sizing:border-box;min-height:96px;padding:10px;border-radius:10px;border:1.5px solid #9db38d;background:#fffaf0;color:#183d37;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
