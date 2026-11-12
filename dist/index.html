@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123d39"><meta name="description" content="One great road trip. Thirty platform adventures, top-down treasure trails, 3D RV rallies, and snack-stacking mini-games with Griffin and friends.">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Doodle Onward"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/assets/griffin-icon.png?v=20"><link rel="icon" type="image/png" href="/assets/griffin-icon.png?v=20"><link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/style.css?v=20"><link rel="stylesheet" href="/minigames.css?v=20">
+<title>Doodle Onward • The Great Road Trip</title><script type="module" src="/game.js?v=20"></script>
+</head><body>
+<svg class="icons" aria-hidden="true"><defs>
+<symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="5" cy="8" rx="3" ry="4" transform="rotate(-25 5 8)"/><ellipse cx="11" cy="5" rx="3" ry="4"/><ellipse cx="18" cy="7" rx="3" ry="4" transform="rotate(22 18 7)"/><ellipse cx="21" cy="13" rx="2.5" ry="3.5" transform="rotate(25 21 13)"/><path d="M5 16c2-6 10-7 13 0 5 8-5 5-6 5S1 24 5 16Z"/></symbol>
+<symbol id="i-bone" viewBox="0 0 24 24"><path d="M5 3a3 3 0 0 0-2 5l2 2 9 9 2 2a3 3 0 0 0 5-2 3 3 0 0 0-2-5l-9-9a3 3 0 0 0-5-2Z"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="m7 3 15 9L7 21Z"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 1 3.3 7.1 7.7 1-5.7 5.3 1.5 7.6-6.8-3.7L5.2 22l1.5-7.6L1 9.1l7.7-1Z"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 22 3 13C-4 6 5-2 12 5c7-7 16 1 9 8Z"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="m14 1-11 13h8l-1 9 11-14h-8Z"/></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="m2 5 7-3 7 3 6-3v17l-6 3-7-3-7 3V5Zm7-3v17m7-14v17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M8 6V4a4 4 0 0 1 8 0v2M5 6h14l2 16H3L5 6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 14h8" stroke="currentColor" stroke-width="1.8"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 2h10v7a5 5 0 0 1-10 0V2Zm0 2H2v4c0 3 3 5 6 5m9-9h5v4c0 3-3 5-6 5m-4 1v7m-5 0h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+<symbol id="i-sound" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5V4Zm5 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14m8-14v14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M12 21V4m-7 7 7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v17m-7-7 7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-infinity" viewBox="0 0 24 24"><path d="M12 12C4-1-4 20 6 17c4-1 8-15 14-11 8 6-1 19-8 6Z" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</defs></svg>
+<div class="app" id="app" data-screen="home">
+<header class="topbar">
+<button class="wordmark" id="home-button" aria-label="Doodle Onward home"><svg><use href="#i-paw"/></svg><span>doodle <b>onward</b><small>THE GREAT ROAD TRIP</small></span></button>
+<nav class="topnav" aria-label="Adventure menu"><button data-nav="map"><svg><use href="#i-map"/></svg>Worlds</button><button data-panel="quests"><svg><use href="#i-star"/></svg>Quests</button><button data-panel="gear"><svg><use href="#i-bag"/></svg>Backpack</button><button data-panel="passport"><svg><use href="#i-trophy"/></svg>Passport</button></nav>
+<div class="top-actions"><span class="wallet" title="Spend treats on permanent upgrades"><svg><use href="#i-bone"/></svg><strong id="wallet">0</strong></span><button class="icon-button" id="sound-button" aria-label="Turn sound on" aria-pressed="false"><svg><use href="#i-sound"/></svg></button><button class="icon-button" id="help-button" aria-label="How to play">?</button></div>
+</header>
+<main>
+<section class="arena" id="arena" data-mode="home" aria-label="Doodle Onward game">
+<canvas id="game" tabindex="0" aria-label="Game field. Move with the arrow keys or A and D. Jump with Space or W. Use power with X. Interact with E. Pause with Escape."></canvas>
+<canvas id="rally-canvas" tabindex="0" hidden aria-label="3D RV Rally. Steer with Left and Right or A and D, brake with Down or S, and boost with X."></canvas>
+<div id="memory-board" hidden></div>
+<div class="home-screen" id="home-screen">
+<div class="home-copy"><span class="eyebrow"><i></i> OREGON TO TEXAS. EVERY PAW COUNTS.</span><h1>Doodle<br><em>Onward.</em></h1><p class="home-intro">Big worlds. Little detours.<br> A ridiculously good adventure.</p><div class="adventure-tags"><span>2D platforming</span><span>Top-down quests</span><span>3D rally</span></div>
+<button class="primary play-main" id="play-button" disabled><span class="play-icon"><svg><use href="#i-play"/></svg></span><span><strong id="play-label">Packing the snacks…</strong><small id="play-detail">Five worlds. Thirty adventures. Your pace.</small></span><svg><use href="#i-arrow"/></svg></button>
+<button class="route-link" data-nav="map">Pick your next detour <svg><use href="#i-arrow"/></svg></button></div>
+<div class="hero-note"><svg><use href="#i-paw"/></svg><span>Adventure level:<br><b>very good dog.</b></span></div>
+<div class="hero-world" id="hero-world"><span>CHAPTER 01 / 05</span><strong>Rogue River</strong><small>The road begins with a good sniff.</small></div>
+<div class="crew-bar"><div class="crew-heading"><strong>Your adventure buddy</strong><span id="crew-perk">Griffin · Good-boy zoomies</span></div><div class="crew" id="crew" role="group" aria-label="Choose your character"></div></div>
+</div>
+<div class="run-ui" id="run-ui" hidden>
+<div class="run-top"><div class="run-identity"><span id="run-region">Rogue River</span><div id="hearts" class="hearts" role="img" aria-label="3 hearts"></div></div><div class="run-score"><strong id="score">0</strong><span id="combo">Let’s find snacks</span></div><button class="icon-button" id="pause-button" aria-label="Pause game"><svg><use href="#i-pause"/></svg></button></div>
+<div class="run-objectives" id="run-objectives"></div>
+<div class="bonus-stack" id="bonus-stack"></div>
+<div class="run-callout" id="run-callout" role="status" aria-live="polite"></div>
+<div class="run-bottom"><span id="mode-tip">Explore every little detour.</span><div class="trail-progress"><i id="progress-fill"></i></div><strong id="progress-text">0%</strong></div>
+</div>
+<div class="overlay pause-layer" id="pause-layer" hidden><div class="pause-card"><canvas id="pause-portrait" width="180" height="180" aria-hidden="true"></canvas><span class="eyebrow">PAWS ON PAUSE</span><h2>A little sniff break.</h2><p id="pause-detail">Your adventure will be right here.</p><button class="primary" id="resume-button">Keep going <svg><use href="#i-play"/></svg></button><div class="button-pair"><button class="secondary" id="restart-button">Start again</button><button class="secondary" id="quit-button">Back to camp</button></div></div></div>
+<div class="overlay result-layer" id="result-layer" hidden><article class="result-card" id="result-content"></article></div>
+<div class="overlay load-error" id="load-error" hidden><h2>The snacks got delayed.</h2><p id="load-error-text">We couldn’t load the adventure. Give it another try.</p><button class="primary" id="reload-button">Reload the adventure</button></div>
+<canvas id="celebrations" class="celebration-canvas" aria-hidden="true"></canvas>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</section>
+<div class="play-controls" id="play-controls" hidden>
+<div class="dpad" aria-label="Movement controls"><button id="up-button" class="control-button up-control" aria-label="Move up"><svg><use href="#i-up"/></svg></button><button id="left-button" class="control-button left-control" aria-label="Move left"><svg class="point-left"><use href="#i-arrow"/></svg><kbd>A / ←</kbd></button><button id="down-button" class="control-button down-control" aria-label="Move down or brake"><svg><use href="#i-down"/></svg><kbd>S / ↓</kbd></button><button id="right-button" class="control-button right-control" aria-label="Move right"><svg><use href="#i-arrow"/></svg><kbd>D / →</kbd></button></div>
+<div class="action-controls"><button class="control-button interact-control" id="interact-button"><strong id="interact-label">OPEN</strong><kbd>E</kbd></button><button class="control-button hint-control" id="hint-button" aria-label="Show a trail hint"><strong id="hint-label">HINT · 3</strong><kbd>H</kbd></button><button class="control-button power-control" id="power-button"><svg><use href="#i-bolt"/></svg><span><strong id="power-label">ZOOMIES</strong><i><b id="power-fill"></b></i></span><kbd>X</kbd></button><button class="control-button jump-control" id="jump-button"><svg><use href="#i-up"/></svg><span><strong>JUMP</strong><small>Tap twice for a double jump</small></span><kbd>SPACE</kbd></button></div>
+</div>
+<div id="camp-extras" class="camp-extras">
+<section class="route-section" id="world-map" aria-labelledby="world-map-title"><div class="section-heading"><div><span class="eyebrow">FIVE CHAPTERS. NO NEED TO RUSH.</span><h2 id="world-map-title">The road is full of stories.</h2></div><button class="pill-button" data-panel="passport"><svg><use href="#i-star"/></svg><span id="medal-total">0 / 90 medals</span></button></div><div class="world-tabs" id="world-tabs" role="group" aria-label="Choose a world"></div><div class="world-stage" id="world-stage"></div></section>
+<section class="detour-section" aria-labelledby="detour-title"><div class="section-heading"><div><span class="eyebrow">FOLLOW YOUR CURIOSITY</span><h2 id="detour-title">Take the scenic route.</h2></div><span class="section-note">Every detour earns treats & quest progress.</span></div><div class="activity-grid">
+<button class="activity-card scout-card" data-start-mode="scout"><span class="activity-art scout-art"><i></i><i></i><i></i><b>✦</b><span>↗</span></span><span class="activity-copy"><small>2D TOP-DOWN · EXPLORE</small><strong>Trail Scout</strong><span>Secret treasure. Curious neighbors.<br>One wonderfully twisty trail.</span><b>Go exploring <svg><use href="#i-arrow"/></svg></b></span></button>
+<button class="activity-card rally-card" data-start-mode="rally"><span class="activity-art rally-art"><i></i><i></i><b>RV</b><span>✦</span></span><span class="activity-copy"><small>3D · STEER & STACK</small><strong>RV Rally</strong><span>Weave through the wide-open road.<br>Find your line. Hit the boost.</span><b>Hit the road <svg><use href="#i-arrow"/></svg></b></span></button>
+<button class="activity-card snack-card" data-start-mode="snack"><span class="activity-art snack-art"><svg><use href="#i-bone"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-bone"/></svg><b>30×</b></span><span class="activity-copy"><small>45 SECONDS · CATCH & COMBO</small><strong>Snack Storm</strong><span>Catch a little chaos.<br>Stack a whole lot of bonus.</span><b>Make it rain <svg><use href="#i-arrow"/></svg></b></span></button>
+<button class="activity-card memory-card" data-start-mode="memory"><span class="activity-art memory-art"><i>?</i><i>★</i><i>★</i></span><span class="activity-copy"><small>MINI-GAME · MATCH & MULTIPLY</small><strong>Camp Pairs</strong><span>A quick game of paws and memory.<br>Perfect pairs keep the streak alive.</span><b>Flip for fun <svg><use href="#i-arrow"/></svg></b></span></button>
+</div></section>
+<section class="camp-bottom"><article class="daily-card"><div><span class="eyebrow">TODAY’S LITTLE ADVENTURE</span><h3 id="daily-title">A fresh road every day.</h3><p id="daily-detail">A seeded challenge with a bonus reward.</p></div><button class="secondary" id="daily-button">Play today <svg><use href="#i-arrow"/></svg></button></article><article class="quest-preview" id="quest-preview"></article></section>
+<nav class="mobile-nav" aria-label="Camp menu"><button data-panel="quests"><svg><use href="#i-star"/></svg>Quests</button><button data-panel="gear"><svg><use href="#i-bag"/></svg>Backpack</button><button data-panel="passport"><svg><use href="#i-trophy"/></svg>Passport</button></nav>
+</div>
+<footer class="below-game" id="below-game"><p><svg><use href="#i-heart"/></svg>With Kevin, our forever guide. Along for every mile.</p><div><span id="save-status">Saved on this device</span><button id="install-button">Play offline</button><button id="share-button">Share adventure</button></div></footer>
+</main>
+<dialog class="panel-dialog" id="panel-dialog" aria-labelledby="panel-title"><header><h2 id="panel-title"></h2><button class="icon-button" id="close-dialog" aria-label="Close panel"><svg><use href="#i-close"/></svg></button></header><div id="panel-content"></div></dialog>
+<div class="sr-only" id="accessible-status" role="status" aria-live="polite"></div>
+</div>
+</body></html>
