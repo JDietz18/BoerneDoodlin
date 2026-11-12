@@ -141,7 +141,9 @@ export class RallyRun {
       this._convoys.push({ id, z: from, total: count, taken: 0 });
     }
     if (twist.id === 'spray' && row % 3 === 1) this._add('splash', lanes[Math.floor(random() * 3)], rowZ + 24);
-    if (twist.id === 'ramps' && row % 4 === 1) {
+    // A ramp every fourth row. Where a convoy starts right behind the landing,
+    // the ramp waits two rows, so a jump never costs a perfect line.
+    if (twist.id === 'ramps' && (row % 12 === 9 ? false : row % 12 === 11 || row % 4 === 1)) {
       const beside = blocked.filter(lane => Math.abs(lane - safe) === 1), choices = beside.length ? beside : blocked;
       const x = lanes[choices[Math.floor(random() * choices.length)]], z = rowZ - 12;
       this._add('ramp', x, z);
@@ -456,10 +458,10 @@ export class RallyRenderer {
     this._hudPoint = () => this._hud;
     this._wantLayered = layered; this._layered = false; this.softwareGL = false;
     // Share of full sharpness the WebGL scene is drawn at. It steps down if frames run long.
-    this.renderScale = 1; this._load = 1 / 60; this._loadFrames = 0;
+    this.renderScale = 1; this._load = 1 / 60; this._loadFrames = 0; this._resizeDue = false; this._regained = 0; this._lastRun = null; this._lastReduced = false;
     this.surface = canvas.ownerDocument?.createElement('canvas') || null;
-    this._lost = event => { event.preventDefault(); this.is3D = false;this._setBackend('webgl-context-lost');this._softwareLastFrame=-Infinity;this._backendChanged(); };
-    this._restored = () => { if (!this.destroyed) { this._initGL(); this._backendChanged(); } };
+    this._lost = event => { event.preventDefault(); this.is3D = false;this._setBackend('webgl-context-lost');this._softwareLastFrame=-Infinity;this._backendChanged();this._repaint(); };
+    this._restored = () => { if (!this.destroyed) { this._initGL(); this._backendChanged(); this._repaint(); } };
     this.surface?.addEventListener('webglcontextlost', this._lost);
     this.surface?.addEventListener('webglcontextrestored', this._restored);
     this._initGL(); this._layered = this.is3D && (layered === true || (layered === 'auto' && !this.softwareGL)) && this._attachSurface(); this.resize();
@@ -549,8 +551,10 @@ export class RallyRenderer {
   // --- frame --------------------------------------------------------------
   draw(run, { time = run.time || 0, dt, simDt, reducedMotion = false, insets } = {}) {
     if (this.destroyed || !this.ctx) return;
-    const real = clamp(dt === undefined ? time - (this._lastTime ?? time) : dt, 0, .1); this._lastTime = time;
+    const real = clamp(dt === undefined ? time - (this._lastTime ?? time) : dt, 0, .1); this._lastTime = time; this._lastRun = run; this._lastReduced = Boolean(reducedMotion);
     if (insets && typeof insets === 'object') this.insets = insets;
+    // A change of scene resolution waits for the top of a frame, so no blank frame is ever shown.
+    if (this._resizeDue) { this._resizeDue = false; this.resize(); }
     this.juice.reducedMotion = Boolean(reducedMotion); this.juice.update(real);
     this._advance(run, real, simDt === undefined ? real : clamp(simDt, 0, .1), Boolean(reducedMotion));
     this._camera(run, Boolean(reducedMotion));
@@ -564,13 +568,16 @@ export class RallyRenderer {
     this._drawSoftware(run, time, reducedMotion);
   }
   // A struggling GPU gets fewer pixels rather than a slideshow: sustained long
-  // frames step the scene resolution down (never below half). It stays down.
+  // frames step the scene resolution down (never below half). A steady 30 fps
+  // is not a struggle: iPhone Low Power Mode caps every page there.
   _pace(real) {
     if (!(real > 0)) return;
     this._load += (real - this._load) * .06;
-    if (++this._loadFrames < 30 || this._load < .03 || this.renderScale <= .5) return;
-    this.renderScale = Math.max(.5, this.renderScale * (this._load > .044 ? .6 : .8)); this._loadFrames = 0; this._load = 1 / 60; this.resize();
+    if (++this._loadFrames < 45 || this._load < .042 || this.renderScale <= .5) return;
+    this.renderScale = Math.max(.5, this.renderScale * (this._load > .055 ? .6 : .8)); this._loadFrames = 0; this._load = 1 / 60; this._resizeDue = true;
   }
+  // Redraws the last frame as a still, so a paused picture survives losing or regaining WebGL.
+  _repaint() { if (this._lastRun && !this.destroyed) this.draw(this._lastRun, { time: this._lastTime, dt: 0, simDt: 0, reducedMotion: this._lastReduced }); }
   _present(run, reducedMotion) {
     const c = this.ctx; c.setTransform(1,0,0,1,0,0);
     if (this._layered) { this.stats.presentation = 'layered'; c.clearRect(0, 0, this.canvas.width, this.canvas.height); }
@@ -581,7 +588,9 @@ export class RallyRenderer {
     this._state = { runId: run.runId, ready: false, clock: 0, camX: 0, camRoll: 0, camRollV: 0, camLift: 0, yaw: 0, sway: 0, swayV: 0, pitch: 0, bounce: 0, bounceV: 0,
       boost: 0, gold: 0, fever: 0, urgency: 0, hurt: 0, shieldPop: 0, pulse: 0, near: 0, startGate: null, finishGate: null, banner: '', bannerColor: CSS_CREAM, bannerUntil: -1,
       dust: 0, flame: 0, side: 1, drops: [], debris: [], broken: new Set(), star: 0, starSeed: 0 };
-    this._softwareLastFrame = -Infinity;
+    this._softwareLastFrame = -Infinity; this._loadFrames = 0;
+    // A slowdown that has passed gives its sharpness back, one step per new run and twice at most.
+    if (this.renderScale < 1 && this._load < .02 && this._regained < 2) { this._regained++; this.renderScale = Math.min(1, this.renderScale * 1.25); this._resizeDue = true; }
   }
   // Camera springs, body sway, debris and wheel dust. `dt` is real time (zero
   // while paused); `simDt` follows hit-stop and slow motion.
@@ -1179,7 +1188,12 @@ export class RallyRenderer {
     if (run.mode !== 'ready' && t < T.go + .9) {
       const go = t >= T.go, index = go ? 3 : t >= T.countdown[2] ? 2 : t >= T.countdown[1] ? 1 : 0, phase = go ? (t - T.go) / .9 : (t - T.countdown[index]) / .8;
       const pop = reducedMotion ? 1 : 1.5 - .5 * smooth(0, .22, phase);
-      this._text(c, go ? 'GO!' : String(3 - index), cx, midY, big * pop * (go ? .8 : 1), go ? CSS_MINT : CSS_CREAM, 1 - smooth(.62, 1, phase));
+      // A digit is narrow and sits over the open middle lane. GO! is wide and the
+      // first cones arrive while it is still up, so it sits high, about on the
+      // banner line, and smaller on a short screen where the road ahead is squeezed.
+      const goSize = Math.min(60, w * .15, safeH * .12);
+      if (go) this._text(c, 'GO!', cx, top + goSize * .6 + safeH * .07 + Math.max(0, safeH - 400) * .1, goSize * pop, CSS_MINT, 1 - smooth(.5, 1, phase));
+      else this._text(c, String(3 - index), cx, midY, big * pop, CSS_CREAM, 1 - smooth(.62, 1, phase));
     }
     if (run.mode === 'running' && left <= 3.02 && left > T.finishGlide) {
       const phase = 1 - (left % 1 || 1), pop = reducedMotion ? 1 : 1.35 - .35 * smooth(0, .2, phase);
@@ -1187,13 +1201,23 @@ export class RallyRenderer {
     }
     if (s.banner && t < s.bannerUntil) {
       const age = 1.9 - (s.bannerUntil - t), size = Math.min(32, w * .074, safeH * .12) * (reducedMotion ? 1 : 1.25 - .25 * smooth(0, .18, age));
-      this._text(c, s.banner, cx, top + safeH * .14 + 14, size, s.bannerColor, Math.min(1, (s.bannerUntil - t) * 3));
+      this._text(c, s.banner, cx, this._bannerY(), size, s.bannerColor, Math.min(1, (s.bannerUntil - t) * 3));
     }
     if (left <= T.finishGlide && run.mode !== 'lost' && run.time > 1) this._text(c, 'FINISH!', cx, top + safeH * .36, big * .62, CSS_GOLD, 1);
     juice.drawOverlay(c, w, h);
     c.setTransform(1, 0, 0, 1, 0, 0);
   }
   _banner(run, text, color = CSS_CREAM) { const s = this._state; if (!s) return; s.banner = text; s.bannerColor = color; s.bannerUntil = run.time + 1.9; }
+  // Height of the line that banners and GO! share, just under the HUD.
+  _bannerY() { const ins = this.insets || {}, top = clamp(ins.top || 0, 0, this.height * .4), bottom = clamp(ins.bottom || 0, 0, this.height * .45); return top + Math.max(120, this.height - top - bottom) * .14 + 14; }
+  // A popup that stays whole on screen however far the RV has steered, and
+  // under the banner line however short the screen is.
+  _say(text, x, y, options) {
+    const w = this.width, room = w - 12, wide = text.length * options.size * .62;
+    if (wide > room) options.size = Math.max(11, options.size * room / wide);
+    const half = Math.min(room, text.length * options.size * .62) / 2 + 6;
+    return this.juice.popup(text, Math.max(half, Math.min(w - half, x)), Math.max(y, this._bannerY() + 16 + options.size * .5), options);
+  }
   /** Engine events become impact: hit-stop, shake, flashes, debris, popups, and snacks flying to the HUD. */
   addEvent(e, run) {
     if (!e || !run || this.destroyed) return;
@@ -1207,12 +1231,12 @@ export class RallyRenderer {
       case 'collect': {
         const at = this.project(e.x ?? p.x, .9 + (e.y || 0), e.z || 0, this._point), gold = e.kind === 'gold', snack = gold || e.kind === 'bone', stack = e.totalMultiplier || 1;
         juice.burst(gold ? 'gold' : snack ? 'crumb' : 'spark', at.x, at.y, { scale: k / 34 });
-        juice.popup(`+${e.value}`, at.x, at.y - k * .5, { color: gold ? CSS_GOLD : stack >= 10 ? CSS_PINK : stack > 1 ? CSS_GOLD : CSS_CREAM, size: Math.min(30, (gold ? 22 : 15) + Math.min(8, stack * .6)), life: .75, rise: 52 });
+        this._say(`+${e.value}`, at.x, at.y - k * .5, { color: gold ? CSS_GOLD : stack >= 10 ? CSS_PINK : stack > 1 ? CSS_GOLD : CSS_CREAM, size: Math.min(30, (gold ? 22 : 15) + Math.min(8, stack * .6)), life: .75, rise: 52 });
         if (snack) { juice.fly({ x: at.x, y: at.y, target: this._hudPoint, life: .46, arc: 44, draw: gold ? this._flyGold : this._flyBone, onArrive: () => juice.ring(this._hud.x, this._hud.y, { color: gold ? CSS_GOLD : CSS_CREAM, radius: 16, life: .22, width: 3 }) }); s.pulse = 1; }
         if (gold) juice.zoomPunch(.03);
         break;
       }
-      case 'combo': juice.ring(rv.x, rv.y, { color: CSS_GOLD, radius: k * 2.6, life: .4, width: 5 }); juice.popup(`CHAIN ×${e.multiplier}`, rv.x, rv.y - k * 2.2, { color: CSS_GOLD, size: 22, life: 1 }); s.bounceV += 1.2; break;
+      case 'combo': juice.ring(rv.x, rv.y, { color: CSS_GOLD, radius: k * 2.6, life: .4, width: 5 }); this._say(`CHAIN ×${e.multiplier}`, rv.x, rv.y - k * 2.2, { color: CSS_GOLD, size: 22, life: 1 }); s.bounceV += 1.2; break;
       case 'gold-rush': juice.flash('#ffd66b', .26, .35); juice.burst('gold', rv.x, rv.y, { count: 18, scale: k / 30 }); juice.ring(rv.x, rv.y, { color: CSS_GOLD, radius: k * 5, life: .6, width: 8 }); break;
       case 'fever': juice.flash('#ff8fc4', .28, .4); juice.shake(.18); juice.zoomPunch(.05); juice.burst('confetti', rv.x, rv.y - k, { count: 22 }); juice.ring(rv.x, rv.y, { color: CSS_PINK, radius: k * 6, life: .7, width: 9 }); break;
       case 'power': juice.flash('#fff3b8', .3, .3); juice.zoomPunch(-.06); juice.kick(0, 8); juice.burst('power', rv.x, rv.y + k * .4, { scale: k / 34 }); s.bounceV -= 1.6; break;
@@ -1220,44 +1244,44 @@ export class RallyRenderer {
       case 'hit':
         juice.hitStop(.09); juice.shake(.6); juice.flash('#ff5a3c', .3, .28); juice.kick(0, 10);
         juice.burst('hit', rv.x, rv.y - k * .3, { scale: k / 30 }); juice.burst('debris', rv.x, rv.y, { scale: k / 34 });
-        juice.popup('BONK!', rv.x, rv.y - k * 2, { color: CSS_CORAL, size: 26, life: .9 });
+        this._say('BONK!', rv.x, rv.y - k * 2, { color: CSS_CORAL, size: 26, life: .9 });
         s.hurt = 1; s.bounceV += 3; if (!still && run.multiplier >= 1) this._scatterCrates(run, 3);
         break;
-      case 'smash': { const at = this.project(e.x ?? p.x, .8, e.z || 0, this._point); juice.hitStop(.04); juice.shake(.28); juice.burst('stomp', at.x, at.y, { scale: k / 30 }); juice.popup(`SMASH! +${e.value}`, at.x, at.y - k, { color: CSS_GOLD, size: 22 }); s.bounceV += 1.5; break; }
+      case 'smash': { const at = this.project(e.x ?? p.x, .8, e.z || 0, this._point); juice.hitStop(.04); juice.shake(.28); juice.burst('stomp', at.x, at.y, { scale: k / 30 }); this._say(`SMASH! +${e.value}`, at.x, at.y - k, { color: CSS_GOLD, size: 22 }); s.bounceV += 1.5; break; }
       case 'shield':
         juice.hitStop(.06); juice.shake(.32); juice.flash('#9fdcff', .3, .3);
         juice.ring(rv.x, rv.y, { color: CSS_SKY, radius: k * 4.5, life: .5, width: 8 }); juice.ring(rv.x, rv.y, { color: '#ffffff', radius: k * 3, life: .35, width: 4 });
         juice.burst('bubble', rv.x, rv.y, { count: 14, scale: k / 30 }); juice.burst('spark', rv.x, rv.y, { count: 14, color: CSS_SKY });
-        juice.popup('SHIELD SAVE!', rv.x, rv.y - k * 2, { color: CSS_SKY, size: 24, life: 1 }); s.shieldPop = 1; s.bounceV += 2;
+        this._say('SHIELD SAVE!', rv.x, rv.y - k * 2, { color: CSS_SKY, size: 24, life: 1 }); s.shieldPop = 1; s.bounceV += 2;
         break;
       case 'near-miss': {
         const side = e.side || 1, at = this.project(p.x + side * 1.2, 1, 0, this._point);
         juice.slowMo(.5, .16); juice.kick(-side * 7, 0); juice.zoomPunch(.03); s.near = 1;
         juice.burst('spark', at.x, at.y, { count: 10, angle: side > 0 ? 0 : Math.PI, spread: [0, 1.2] });
-        juice.popup('SO CLOSE!', rv.x + side * k * .6, rv.y - k * 1.9, { color: CSS_CREAM, size: 24, life: .9 }); juice.popup(`+${e.value}`, rv.x + side * k * .6, rv.y - k * 1.2, { color: CSS_GOLD, size: 17, life: .8 });
+        this._say('SO CLOSE!', rv.x + side * k * .6, rv.y - k * 1.9, { color: CSS_CREAM, size: 24, life: .9 }); this._say(`+${e.value}`, rv.x + side * k * .6, rv.y - k * 1.2, { color: CSS_GOLD, size: 17, life: .8 });
         break;
       }
-      case 'heal': juice.burst('heart', rv.x, rv.y - k * .5, { scale: k / 34 }); juice.popup('+1 HEART', rv.x, rv.y - k * 2, { color: '#ffb4a3', size: 20 }); break;
+      case 'heal': juice.burst('heart', rv.x, rv.y - k * .5, { scale: k / 34 }); this._say('+1 HEART', rv.x, rv.y - k * 2, { color: '#ffb4a3', size: 20 }); break;
       case 'pickup': {
         const star = e.kind === 'star', color = star ? CSS_GOLD : e.kind === 'shield' ? CSS_SKY : CSS_MINT;
         juice.ring(rv.x, rv.y, { color, radius: k * 3.4, life: .45, width: 6 });
-        juice.popup(star ? 'WISH GRANTED! BOOST UP' : e.kind === 'shield' ? 'SHIELD UP!' : 'SNACK MAGNET!', rv.x, rv.y - k * 2.1, { color, size: 20, life: 1 });
+        this._say(star ? 'WISH GRANTED! BOOST UP' : e.kind === 'shield' ? 'SHIELD UP!' : 'SNACK MAGNET!', rv.x, rv.y - k * 2.1, { color, size: 20, life: 1 });
         if (star) { juice.burst('star', rv.x, rv.y, { count: 12, scale: k / 30 }); juice.flash('#fff0a8', .2, .25); }
         break;
       }
-      case 'ramp': juice.kick(0, 12); juice.burst('land', rv.x, rv.y + k * .7, { scale: k / 30 }); juice.popup('BIG AIR!', rv.x, rv.y - k * 2.2, { color: CSS_GOLD, size: 26, life: 1 }); s.bounceV += 2.4; break;
+      case 'ramp': juice.kick(0, 12); juice.burst('land', rv.x, rv.y + k * .7, { scale: k / 30 }); this._say('BIG AIR!', rv.x, rv.y - k * 2.2, { color: CSS_GOLD, size: 26, life: 1 }); s.bounceV += 2.4; break;
       case 'landing':
         juice.shake(.3); juice.kick(0, 12); juice.burst('land', rv.x - k * .7, rv.y + k * .7, { scale: k / 28 }); juice.burst('land', rv.x + k * .7, rv.y + k * .7, { scale: k / 28 }); s.bounceV -= 4;
-        if (e.cleared > 0) juice.popup(`CLEARED IT! +${e.value}`, rv.x, rv.y - k * 2, { color: CSS_GOLD, size: 22, life: 1 });
+        if (e.cleared > 0) this._say(`CLEARED IT! +${e.value}`, rv.x, rv.y - k * 2, { color: CSS_GOLD, size: 22, life: 1 });
         break;
       case 'splash': {
         juice.flash('#bfeeff', .2, .25); juice.kick(0, -6); juice.burst('splash', rv.x - k * .7, rv.y + k * .5, { scale: k / 26 }); juice.burst('splash', rv.x + k * .7, rv.y + k * .5, { scale: k / 26 });
-        juice.popup(`SPLASH! +${e.value}`, rv.x, rv.y - k * 2, { color: CSS_SKY, size: 22, life: .9 }); s.bounceV += 1.5;
+        this._say(`SPLASH! +${e.value}`, rv.x, rv.y - k * 2, { color: CSS_SKY, size: 22, life: .9 }); s.bounceV += 1.5;
         if (!still) for (let i = 0; i < 7; i++) s.drops.push({ x: Math.random(), y: .15 + Math.random() * .6, r: 4 + Math.random() * 7, vy: .05 + Math.random() * .12, life: .7 + Math.random() * .7 });
         break;
       }
       case 'convoy-start': this._banner(run, 'SNACK CONVOY!', CSS_GOLD); break;
-      case 'convoy': juice.flash('#fff0a8', .24, .3); juice.burst('confetti', rv.x, rv.y - k, { count: 24 }); juice.popup(`PERFECT CONVOY! +${e.value}`, rv.x, rv.y - k * 2.4, { color: CSS_GOLD, size: 24, life: 1.3 }); juice.zoomPunch(.04); break;
+      case 'convoy': juice.flash('#fff0a8', .24, .3); juice.burst('confetti', rv.x, rv.y - k, { count: 24 }); this._say(`PERFECT CONVOY! +${e.value}`, rv.x, rv.y - k * 2.4, { color: CSS_GOLD, size: 24, life: 1.3 }); juice.zoomPunch(.04); break;
       case 'final-push': this._banner(run, 'FINAL STRETCH!', CSS_CORAL); juice.flash('#ff8f6b', .22, .35); juice.zoomPunch(.04); break;
       case 'final-tick': juice.zoomPunch(.02); break;
       case 'finish-line':

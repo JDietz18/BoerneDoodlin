@@ -398,3 +398,108 @@ test('on a real GPU the WebGL scene is shown directly in a few instanced calls; 
   const plain=glCanvas({instancing:false}),each=new RallyRenderer(plain.canvas,{layered:false});
   each.draw(run,{time:1,dt:1/60,simDt:1/60});assert.equal(each.stats.presentation,'copy');assert.ok(plain.log.draws>300&&plain.log.draws===each.stats.shapes,'without instancing every shape still draws');each.destroy();
 });
+
+// --- review fixes: fair starts, whole words, steady sharpness, and ramps that never cost a convoy ---
+test('a canyon ramp never launches the RV past the head of a snack convoy',()=>{
+  for(let seed=1;seed<=40;seed++){
+    const {entities}=course(2,seed),ramps=entities.filter(e=>e.type==='ramp'),convoyHeads=new Map();
+    for(const e of entities)if(e.convoy&&!(convoyHeads.get(e.convoy)<=e.worldZ))convoyHeads.set(e.convoy,e.worldZ);
+    assert.ok(ramps.length>=6,'ramps stay the canyon signature');assert.ok(convoyHeads.size>=3);
+    // Wheels touch down 25.4 past the ramp; a convoy that begins within the next second would be out of reach.
+    for(const ramp of ramps)for(const head of convoyHeads.values())assert.ok(head<ramp.worldZ||head>ramp.worldZ+50,`seed ${seed}: a convoy starts ${(head-ramp.worldZ).toFixed(1)} past a ramp`);
+  }
+  // A driver who takes every ramp and every air snack can still finish every convoy line.
+  const run=new RallyRun().reset({worldIndex:2,seed:7});let announced=0;run.onEvent=e=>{if(e.type==='convoy-start')announced++;};
+  for(let i=0;i<60*70&&run.mode==='running';i++){
+    const row=run.courseHistory.find(r=>r.z-run.distance>-2);let x=RALLY_WORLD.lanes[row?row.safeLane:1];
+    const snack=run.entities.filter(e=>!['cone','barrier','ramp'].includes(e.type)&&!e.taken&&!e.passed&&e.z>.2&&e.z<20&&!(e.y>0)).sort((a,b)=>a.z-b.z)[0];
+    if(snack&&!run.entities.some(e=>OBSTACLES.includes(e.type)&&e.z>-2&&e.z<16&&Math.abs(e.x-snack.x)<2.2))x=snack.x;
+    const ramp=run.entities.find(e=>e.type==='ramp'&&!e.passed&&e.z>0&&e.z<28);if(ramp)x=ramp.x;
+    if(run.jump){const air=run.entities.find(e=>e.y>0&&!e.taken&&e.z>0);if(air)x=air.x;}
+    run.move(Math.max(-1,Math.min(1,(x-run.player.x)*1.4)));run.update(1/60);
+  }
+  assert.equal(run.mode,'won');assert.equal(run.hits,0);assert.ok(run.jumps>=4);assert.ok(announced>=3);assert.equal(run.convoys,announced,'every announced convoy was catchable');
+});
+
+// Like fullCanvas, and also notes where each word was drawn.
+function markedCanvas(width,height){
+  const canvas=fullCanvas(width,height),marks=[],context=canvas.context,proxy=new Proxy(context,{get(target,name){
+    if(name==='fillText')return(text,x,y)=>{marks.push({text:String(text),x,y,size:parseFloat(String(target.font).split(' ')[1])});target.fillText(text,x,y);};
+    return target[name];
+  },set(target,name,value){target[name]=value;return true;}});
+  canvas.getContext=()=>proxy;canvas.marks=marks;return canvas;
+}
+
+test('GO! rides the banner line, so the first cones are never hidden behind it',()=>{
+  for(const [width,height,insets] of [[390,750,{top:102,right:0,bottom:44,left:0}],[844,390,{top:58,right:0,bottom:44,left:0}],[320,568,{top:96,right:0,bottom:44,left:0}]])for(const seed of [3,4,9,12]){
+    const canvas=markedCanvas(width,height),renderer=new RallyRenderer(canvas),run=new RallyRun().reset({worldIndex:0,seed});
+    const frame=time=>{canvas.marks.length=0;run.time=time;run.distance=time*22;run.entities.forEach(e=>e.z=e.worldZ-run.distance);renderer.draw(run,{time:time+50,dt:1/30,simDt:0,reducedMotion:true,insets});return canvas.marks.slice();};
+    const one=frame(1.8).find(m=>m.text==='1');assert.ok(one);
+    for(const time of [2.45,2.65,2.9]){
+      const go=frame(time).find(m=>m.text==='GO!'),cones=run.entities.filter(e=>OBSTACLES.includes(e.type)&&e.z>0&&e.z<30);
+      assert.ok(go,'GO! is up');assert.ok(cones.length>=1,'while the first row arrives');
+      const word={left:go.x-go.size*.93,right:go.x+go.size*.93,top:go.y-go.size*.6,bottom:go.y+go.size*.6};
+      for(const cone of cones){
+        const a=renderer.project(cone.x-cone.width*.5,1.3,cone.z),b=renderer.project(cone.x+cone.width*.5,0,cone.z);
+        assert.ok(a.x>=word.right||b.x<=word.left||a.y>=word.bottom,`the cone shows beside or below GO! (${width}x${height} seed ${seed} at ${time}: cone ${a.x.toFixed(0)}..${b.x.toFixed(0)} from y ${a.y.toFixed(0)}, word ${word.left.toFixed(0)}..${word.right.toFixed(0)} to y ${word.bottom.toFixed(0)})`);
+      }
+      assert.ok(word.top>=insets.top,'and GO! clears the HUD');assert.ok(go.size>=30,'at a size that still reads');
+      assert.ok(one.size>go.size&&Math.abs(one.x-width/2)<1,'the count itself stays big, over the open middle lane');
+    }
+    renderer.destroy();
+  }
+});
+
+test('popups stay whole on screen at either edge of the road, and under the banner line on a short screen',()=>{
+  const words=[{type:'convoy',count:9,value:3000},{type:'pickup',kind:'star'},{type:'pickup',kind:'magnet'},{type:'landing',cleared:2,value:100},{type:'shield'},{type:'near-miss',side:1,value:30},{type:'near-miss',side:-1,value:30},{type:'smash',value:90,x:3.9,z:1},{type:'splash',value:25},{type:'combo',multiplier:5},{type:'hit'},{type:'ramp'},{type:'heal'},{type:'collect',kind:'gold',value:3000,x:-3.9,z:1,totalMultiplier:30}];
+  for(const [width,height,insets] of [[390,750,{top:102,right:0,bottom:44,left:0}],[320,568,{top:96,right:0,bottom:44,left:0}],[844,390,{top:58,right:0,bottom:44,left:0}]]){
+    const renderer=new RallyRenderer(fullCanvas(width,height)),run=new RallyRun().reset({worldIndex:0,seed:5});
+    for(const x of [-3.9,0,3.9]){
+      run.player.x=x;renderer.draw(run,{time:x+10,dt:0,simDt:0,reducedMotion:true,insets});
+      const banner=insets.top+(height-insets.top-insets.bottom)*.14+14;
+      for(const event of words){
+        renderer.juice.popups.length=0;renderer.addEvent(event,run);assert.ok(renderer.juice.popups.length>=1);
+        for(const p of renderer.juice.popups){
+          const half=p.text.length*p.size*.31;
+          assert.ok(p.x-half>=0&&p.x+half<=width,`"${p.text}" fits ${width} wide with the RV at ${x} (centre ${p.x.toFixed(0)}, half ${half.toFixed(0)})`);
+          assert.ok(p.size>=11,'and stays readable');assert.ok(p.y-p.size*.5>=banner+15,`"${p.text}" keeps under the banner line (${p.y.toFixed(0)} vs ${banner.toFixed(0)})`);
+        }
+      }
+    }
+    renderer.destroy();
+  }
+});
+
+test('a steady 30 fps keeps full sharpness, a real slowdown steps down between frames, and sharpness returns on a later run',()=>{
+  const run=new RallyRun().reset({worldIndex:1,seed:6});
+  const capped=glCanvas(),steady=new RallyRenderer(capped.canvas),full=capped.surface.width;
+  // iPhone Low Power Mode holds every page at 30 fps: that is not a struggling GPU.
+  for(let i=0;i<900;i++)steady.draw(run,{time:i/30,dt:1/30,simDt:1/30});
+  assert.equal(steady.renderScale,1);assert.equal(capped.surface.width,full);
+  // Nor is a short stutter, such as coming back from another app.
+  for(let i=0;i<300;i++)steady.draw(run,{time:40+i/60,dt:i>100&&i<105?.1:1/60,simDt:1/60});
+  assert.equal(steady.renderScale,1);
+  // Twenty frames a second for a while is: the scene steps down.
+  let i=0;for(;i<400&&steady.renderScale===1;i++)steady.draw(run,{time:60+i*.05,dt:.05,simDt:.05});
+  assert.ok(steady.renderScale<1&&steady.renderScale>=.5);
+  assert.equal(capped.surface.width,full,'the frame that noticed is still shown whole');
+  steady.draw(run,{time:90,dt:.05,simDt:.05});assert.ok(capped.surface.width<full,'the smaller scene starts with the next frame');
+  // Smooth again by the end of the run: the next run gets one step of sharpness back.
+  const low=steady.renderScale;for(let k=0;k<240;k++)steady.draw(run,{time:100+k/60,dt:1/60,simDt:1/60});
+  assert.equal(steady.renderScale,low,'never mid-run');
+  const next=new RallyRun().reset({worldIndex:1,seed:7});steady.draw(next,{time:200,dt:1/60,simDt:1/60});steady.draw(next,{time:200.02,dt:1/60,simDt:1/60});
+  assert.ok(steady.renderScale>low&&steady.renderScale<=1);assert.ok(capped.surface.width>full*low*1.1);
+  steady.destroy();
+});
+
+test('losing or regaining WebGL while paused repaints the still frame on whichever back end is left',()=>{
+  const gpu=glCanvas(),view=new RallyRenderer(gpu.canvas),run=new RallyRun().reset({worldIndex:3,seed:6});
+  view.draw(run,{time:1,dt:1/60,simDt:1/60});run.pause();view.draw(run,{time:1.02,dt:0,simDt:0});
+  assert.equal(view.stats.presentation,'layered');assert.equal(view.softwareStats.polygons,0);
+  view._lost({preventDefault(){}});
+  assert.equal(view.backend,'software-3d');assert.equal(view.stats.presentation,'software');assert.ok(view.softwareStats.polygons>150,'the paused picture is redrawn in software');
+  const before=gpu.log.draws;view._restored();
+  assert.equal(view.backend,'webgl');assert.equal(gpu.canvas.dataset.renderStatus,'webgl-ready');assert.equal(view.stats.presentation,'layered');assert.ok(gpu.log.draws>before,'and again in WebGL when it returns');
+  assert.equal(run.mode,'paused');assert.equal(run.time,run.result().time);
+  view.destroy();view._lost({preventDefault(){}});view._restored();assert.equal(view.backend,'software-3d','a destroyed view stays quiet');
+});
