@@ -9,6 +9,8 @@
 // Each world adds one small seeded twist. A twist never reads player input,
 // and anything that slides sideways in the air still lands on the column the
 // seeded course gave it, so the landing markers and the mud spacing stay true.
+// The course is the same for a seed at any frame rate and through any hit-stop
+// or slow motion: update() lands exactly on every scheduled wave and twist.
 //
 // Events (every payload also carries `type`; x is world x 0..1120, y is height above the grass):
 //   start pause resume won{result} lost{result} section{section} charged
@@ -23,7 +25,7 @@ export const SNACK_WORLD=Object.freeze({width:1120,height:630,ground:492,minX:80
 export const SNACK_TWISTS=Object.freeze(['bounce','sway','gust','comet','bloom']);
 export const SNACK_TIMING=Object.freeze({limit:45,countdown:Object.freeze([0,.75,1.5,2.25]),finalPush:35,finale:43});
 const WIDTH=120,HEIGHT=82,LIMIT=45,PUSH_AT=35,FINALE_AT=43;
-const DRAG_SPEED=5200,GUST_PUSH=135,BOUNCE_VY=400,BOUNCE_G=520,BOUNCE_VX=45,FOUNTAIN_G=560;
+const DRAG_SPEED=5200,GUST_PUSH=135,BOUNCE_VY=400,BOUNCE_G=520,BOUNCE_VX=45,FOUNTAIN_G=560,BONUS_ID=100000;
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
 const level=(value,max=3)=>Math.round(clamp(value,0,max));
 const rngFor=seed=>{let n=(Number(seed)>>>0)||1;return()=>{n=(n+0x6d2b79f5)>>>0;let t=Math.imul(n^(n>>>15),1|n);t^=t+Math.imul(t^(t>>>7),61|t);return ((t^(t>>>14))>>>0)/4294967296;};};
@@ -54,7 +56,7 @@ export class SnackStorm {
     this.combo=0;this.bestCombo=0;this.multiplier=1;this.bestMultiplier=1;this.comboTime=0;this._stackTier=0;
     this.hits=0;this.dodged=0;this.nearMisses=0;this.missed=0;this.sections=0;this.finished=false;
     this.bounces=0;this.blooms=0;this.comets=0;this.chainsLost=0;
-    this.entities=[];this.spawnHistory=[];this._entitySequence=0;this._wave=0;this._nextWave=.45;this._rainCenter=560;
+    this.entities=[];this.spawnHistory=[];this._entitySequence=0;this._bonusSequence=0;this._wave=0;this._nextWave=.45;this._rainCenter=560;
     this._reserved=[];this._countStep=0;this._lastTick=11;this._finale=false;
     this._twistRandom=null;this._twistWorld=-1;this._nextTwist=Infinity;this.wind=0;this.gust=null;
     this.emit('start',{runId:this.runId,mode:this.runMode,stage:0});return this;
@@ -106,8 +108,9 @@ export class SnackStorm {
   }
   _fallSpeed(){return (165+this.time*1.3)*(this.assist?.84:1);}
   _twistRng(){
-    if(!this._twistRandom||this._twistWorld!==this.worldIndex){
-      this._twistWorld=this.worldIndex;this._twistRandom=rngFor(((this.seed^0x2545f491)>>>0)+level(this.worldIndex,4)*7919+1);
+    const world=level(this.worldIndex,4);
+    if(!this._twistRandom||this._twistWorld!==world){
+      this._twistWorld=world;this._twistRandom=rngFor(((this.seed^0x2545f491)>>>0)+world*7919+1);
       const first={gust:[4.5,2.5],comet:[7,2],bloom:[6,2]}[this.twist];
       this._nextTwist=first?first[0]+this._twistRandom()*first[1]:Infinity;
     }
@@ -224,7 +227,7 @@ export class SnackStorm {
     const count=5;this.blooms++;
     for(let i=0;i<count;i++){
       const k=i-(count-1)/2,vy=430-Math.abs(k)*28;
-      born.push({id:++this._entitySequence,type:'bone',x:seed.x,baseX:seed.x,y:0,w:34,h:34,vy,vx:k*54,g:FOUNTAIN_G,wave:seed.wave,spawnedAt:this.time,arrival:this.time+2*vy/FOUNTAIN_G,taken:false,hit:false,passed:false,fountain:true,bonus:true});
+      born.push({id:BONUS_ID+ ++this._bonusSequence,type:'bone',x:seed.x,baseX:seed.x,y:0,w:34,h:34,vy,vx:k*54,g:FOUNTAIN_G,wave:seed.wave,spawnedAt:this.time,arrival:this.time+2*vy/FOUNTAIN_G,taken:false,hit:false,passed:false,fountain:true,bonus:true});
     }
     this.emit('bloom',{x:seed.x,y:0,count});
   }
@@ -236,15 +239,27 @@ export class SnackStorm {
       this.emit('tick',{remaining:this._lastTick});
     }
   }
+  // The next moment the seeded course has something scheduled: a wave, the golden goodbye, or a twist.
+  _due(){
+    const t=this.time;let due=Infinity;
+    if(this._nextWave<42&&this._nextWave>t)due=this._nextWave;
+    if(!this._finale&&FINALE_AT>t&&FINALE_AT<due)due=FINALE_AT;
+    if(this._nextTwist>t&&this._nextTwist<due)due=this._nextTwist;
+    return due;
+  }
   update(dt){
     if(this.mode!=='running')return;let remaining=clamp(dt,0,.1);
     while(remaining>1e-8&&this.mode==='running'){
-      const step=Math.min(1/120,remaining,this.timeLimit-this.time);remaining-=step;
-      if(step<=1e-8){this.time=this.timeLimit;this._finish(true);break;}this._step(step);
+      const left=this.timeLimit-this.time;
+      if(left<=1e-8){this.time=this.timeLimit;this._finish(true);break;}
+      // Steps stop exactly on each scheduled moment, so the course is worked out from the same clock
+      // value at any frame rate and through any hit-stop or slow motion the view asks for.
+      const due=this._due(),gap=due-this.time,step=Math.min(1/120,remaining,left,gap);remaining-=step;
+      this._step(step,step===gap?due:undefined);
     }
   }
-  _step(dt){
-    this.time+=dt;
+  _step(dt,land){
+    this.time=land===undefined?this.time+dt:land;
     const fever=this.feverTime>0,rush=this.goldRushTime>0,power=this.powerTime>0;
     for(const key of ['invincible','powerTime','magnetTime','feverTime','goldRushTime','_feverCooldown','comboTime'])this[key]=Math.max(0,this[key]-dt);
     if(fever&&!this.feverTime)this.emit('fever-end');
