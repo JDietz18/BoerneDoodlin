@@ -269,3 +269,10 @@ test('a remix win keeps the ordinary checkpoint and an ordinary win still clears
   j.completeRun({runId:'plain-1',mode:'platform',levelId:'river-1',won:true,score:500,treats:5,gold:1,hits:1,time:90,remix:false});
   assert.equal(j.state.checkpoints['river-1'],undefined);
 });
+
+test('a new journey starts with music and sound on, and a saved choice to mute survives', () => {
+  const j=new Journey();
+  assert.equal(j.state.settings.sound,true);
+  j.setSetting('sound',false);
+  assert.equal(new Journey(JSON.parse(JSON.stringify(j.state))).state.settings.sound,false);
+});

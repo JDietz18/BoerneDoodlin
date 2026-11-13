@@ -223,3 +223,183 @@ html[data-reduced-motion=true] #app .panel-dialog *{transition:none!important}
 #app .pause-card{padding:22px 18px 20px}
 #app .result-card p.reward-line{color:var(--zap)}
 #app .result-card p.result-unlocks{color:#fff}
+
+/* ======================================================================
+   In-run HUD, callout, coach tips, toast, Camp Pairs, camp top bar and footer
+   Same sticker look as the camp: ink outlines, hard offset shadows, loud
+   colour blocks. Every chip is opaque so it reads over a busy scene. Only
+   colours, borders and hard shadows change here, never the layout grid, so
+   the HUD keeps its height. Nothing blurs; new motion stops for Reduced motion.
+   ====================================================================== */
+
+/* ---- scrim and progress ---------------------------------------------------- */
+#app .hud::before{background:linear-gradient(#10231f99,#10231f40 60%,#10231f00)}
+#app[data-activity=memory] .hud::before{background:none}
+#app .hud-progress{height:7px;background:var(--ink);border-bottom:2px solid var(--paper)}
+#app .hud-progress i{background:repeating-linear-gradient(135deg,var(--zap) 0 8px,#ffe98a 8px 16px);border-radius:0 6px 6px 0;border-right:2px solid var(--ink)}
+@media (max-height:560px) and (orientation:landscape){#app .hud-progress{height:5px;border-bottom-width:1px}}
+
+/* ---- pause, level name, hearts --------------------------------------------- */
+#app .hud-pause{border:3px solid var(--ink);background:var(--zap);color:var(--ink);box-shadow:3px 3px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+#app .hud-pause svg{width:20px;height:20px;fill:var(--ink)}
+#app .hud-pause:active{transform:translate(2px,2px) scale(1);box-shadow:1px 1px 0 var(--ink)}
+#app .hud-pause:focus-visible{outline:3px solid var(--grape);outline-offset:2px}
+#app .hud-id{gap:3px}
+#app #run-region{align-self:flex-start;line-height:1.15;padding:1px 9px 1px;border:2px solid var(--ink);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:900;letter-spacing:.03em;text-transform:uppercase;text-shadow:none;box-shadow:2px 2px 0 var(--ink);rotate:-1.2deg}
+#app .hud-hearts{align-items:center;gap:2px;min-height:0;width:fit-content;padding:0 6px;border:2px solid var(--paper);border-radius:999px;background:var(--ink);box-shadow:2px 2px 0 #10231f80}
+#app .hud-hearts:empty{display:none}
+#app .hud-hearts svg{width:16px;height:16px;fill:var(--pop);stroke:var(--ink);stroke-width:0;filter:none}
+#app .hud-hearts svg.empty{fill:#fff7e640}
+
+/* ---- score and timer ------------------------------------------------------- */
+#app #score{padding:3px 11px 4px;border:2px solid var(--paper);border-radius:12px;background:var(--ink);color:var(--zap);text-shadow:none;box-shadow:3px 3px 0 #10231f80;rotate:2deg}
+#app .hud-timer{border:3px solid var(--ink);background:var(--sky);color:var(--ink);text-shadow:none;box-shadow:3px 3px 0 var(--ink);rotate:-3deg}
+#app .hud-timer.urgent{background:var(--zap);color:var(--ink);border-color:var(--ink)}
+#app .hud-timer.final{background:var(--pop);color:#fff;border-color:var(--ink);animation:hud2-wobble .5s ease-in-out infinite}
+#app .hud-timer.tick{animation:hud-tick .5s cubic-bezier(.2,1.6,.4,1)}
+
+/* ---- goal chips ------------------------------------------------------------ */
+#app .obj{height:24px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);box-shadow:2px 2px 0 var(--ink);font-weight:900}
+#app .obj:nth-child(2){rotate:.8deg}
+#app .obj svg{fill:#10231f33;stroke:var(--ink);stroke-width:0}
+#app .obj svg.on{fill:var(--zap);stroke-width:1.4;paint-order:stroke}
+#app .obj i{opacity:1;font-weight:800}
+#app .obj.parcel.on{background:var(--mint);border-color:var(--ink)}
+#app button.obj{background:var(--zap);box-shadow:3px 3px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+#app button.obj:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+#app button.obj.spent{opacity:1;background:#e9dfc4;color:#3d4f4a;box-shadow:none;border-style:dashed}
+#app button.obj:focus-visible{outline:3px solid var(--grape);outline-offset:2px}
+
+/* ---- bonus stack ----------------------------------------------------------- */
+#app .stack{--tier-color:var(--paper)}
+#app .stack[data-tier="2"]{--tier-color:#fff0a8}
+#app .stack[data-tier="5"]{--tier-color:var(--zap)}
+#app .stack[data-tier="10"]{--tier-color:#ff9a5c}
+#app .stack[data-tier="20"]{--tier-color:#ff9ecb}
+#app .stack[data-tier="30"]{--tier-color:#fff}
+#app .stack-total{padding:2px 7px 3px;border:2px solid var(--paper);border-radius:10px;background:var(--ink);text-shadow:none;box-shadow:2px 2px 0 #10231f80;rotate:3deg}
+#app .stack[data-tier="0"] .stack-total{opacity:1;font-size:18px;color:#fff7e6b3}
+#app .layer{border:2px solid var(--ink);border-style:dashed;border-radius:12px;background:#fff7e6d9;color:#10231fb3;opacity:1;box-shadow:none}
+#app button.layer,#app .layer{color:#10231fb3}
+#app button.layer.on{color:var(--ink)}
+#app .layer em{font-weight:900}
+#app .layer b{font-weight:900}
+#app .layer i{height:4px;background:var(--ink);border-radius:0 4px 0 0}
+#app .layer.on{border-style:solid;color:var(--ink);box-shadow:2px 2px 0 var(--ink)}
+#app .layer.on i{background:var(--ink)}
+#app .layer.chain.on{background:var(--mint)}
+#app .layer.frenzy.on,#app button.layer.frenzy.on{background:var(--pop);color:#fff}
+#app .layer.frenzy.on i{background:#fff}
+#app .layer.gold.on{background:var(--zap)}
+#app .layer.power.on,#app button.layer.power.on{background:var(--grape);color:#fff}
+#app .layer.power.on i{background:#fff}
+#app .layer.cooling,#app button.layer.cooling{opacity:1;background:#fff7e6d9;color:#10231f99}
+#app .layer.frenzy.cooling{border-style:dashed}
+#app .layer.power.ready,#app button.layer.power.ready{border-style:solid;border-color:var(--ink);background:var(--sky);color:var(--ink);box-shadow:2px 2px 0 var(--ink);animation:hud2-ready .9s ease-in-out infinite}
+#app button.layer:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+#app button.layer:focus-visible{outline:3px solid var(--grape);outline-offset:2px}
+
+/* ---- callout, tip, toast --------------------------------------------------- */
+#app .hud-callout{padding:7px 14px 8px 20px;border:3px solid var(--ink);border-radius:16px;background:var(--paper);color:var(--ink);box-shadow:4px 4px 0 var(--ink);rotate:-1deg}
+#app .hud-callout::before{content:'';position:absolute;left:-10px;top:-11px;width:22px;height:22px;border:2px solid var(--ink);border-radius:50%;background:var(--pop) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M12 13c-3 0-5.5 2.2-5.5 4.4 0 1.6 1.4 2.4 3 2.1 1-.2 1.6-.5 2.5-.5s1.5.3 2.5.5c1.6.3 3-.5 3-2.1C17.5 15.2 15 13 12 13zM5.5 11c1.1 0 2-1.1 2-2.5S6.6 6 5.5 6 3.5 7.1 3.5 8.5 4.4 11 5.5 11zm4-3.5c1.1 0 2-1.1 2-2.5S10.6 2.5 9.5 2.5s-2 1.1-2 2.5.9 2.5 2 2.5zm5 0c1.1 0 2-1.1 2-2.5s-.9-2.5-2-2.5-2 1.1-2 2.5.9 2.5 2 2.5zm5 3.5c1.1 0 2-1.1 2-2.5S19.6 6 18.5 6s-2 1.1-2 2.5.9 2.5 2 2.5z'/%3E%3C/svg%3E") center/13px no-repeat}
+#app .hud-tip{border:2px solid var(--ink);background:var(--paper);color:var(--ink);font-weight:800;box-shadow:3px 3px 0 var(--ink)}
+#app .toast{border:3px solid var(--paper);border-radius:16px;background:var(--ink);color:var(--zap);font-weight:800;line-height:1.3;box-shadow:4px 4px 0 var(--pop);rotate:-1deg}
+
+/* ---- first-time coach tips ------------------------------------------------- */
+#app .coach-tip{color:var(--ink);text-shadow:none;font-weight:900}
+#app .coach-tip>span:last-child{display:block;padding:8px 12px 9px;border:3px solid var(--ink);border-radius:16px;background:var(--paper);box-shadow:3px 3px 0 var(--ink)}
+#app .coach-tip:nth-child(odd)>span:last-child{rotate:-1.5deg}
+#app .coach-tip:nth-child(even)>span:last-child{rotate:1.5deg}
+#app .coach-tip small{font-weight:700;opacity:1;color:#2d423d}
+#app .coach-hand{border:3px solid var(--ink);background:var(--zap) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2310231f' d='M12 13c-3 0-5.5 2.2-5.5 4.4 0 1.6 1.4 2.4 3 2.1 1-.2 1.6-.5 2.5-.5s1.5.3 2.5.5c1.6.3 3-.5 3-2.1C17.5 15.2 15 13 12 13zM5.5 11c1.1 0 2-1.1 2-2.5S6.6 6 5.5 6 3.5 7.1 3.5 8.5 4.4 11 5.5 11zm4-3.5c1.1 0 2-1.1 2-2.5S10.6 2.5 9.5 2.5s-2 1.1-2 2.5.9 2.5 2 2.5zm5 0c1.1 0 2-1.1 2-2.5s-.9-2.5-2-2.5-2 1.1-2 2.5.9 2.5 2 2.5zm5 3.5c1.1 0 2-1.1 2-2.5S19.6 6 18.5 6s-2 1.1-2 2.5.9 2.5 2 2.5z'/%3E%3C/svg%3E") center/22px no-repeat;box-shadow:3px 3px 0 var(--ink)}
+#app .coach-hand.tap{animation:hud2-tap 1.1s ease-out infinite}
+
+/* ---- phones --------------------------------------------------------------- */
+@media (max-width:560px){
+ #app .layer{border-radius:11px}
+}
+@media (max-width:359px){
+ #app #run-region{letter-spacing:0}
+}
+
+/* ---- Camp Pairs ------------------------------------------------------------ */
+#app .camp-pairs .cp-streak{border:2px solid var(--ink);background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
+#app .camp-pairs .cp-streak.is-lit{background:var(--zap)}
+#app .camp-pairs .cp-flame::before{background:var(--ink)}
+#app .camp-pairs .cp-streak__n{color:var(--ink)}
+#app .camp-pairs .cp-streak__x{border:2px solid var(--ink);background:var(--pop);color:#fff}
+#app .camp-pairs .cp-timer{height:12px;border:2px solid var(--ink);background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
+#app .camp-pairs .cp-timer i{background:var(--mint);border-right:2px solid var(--ink)}
+#app .camp-pairs[data-clock=low] .cp-timer i{background:var(--zap)}
+#app .camp-pairs[data-clock=final] .cp-timer i,#app .camp-pairs[data-clock=out] .cp-timer i{background:var(--pop)}
+#app .camp-pairs .cp-time{padding:5px 9px;border:2px solid var(--paper);border-radius:10px;background:var(--ink);color:var(--zap);box-shadow:2px 2px 0 #10231f80}
+#app .camp-pairs[data-clock=low] .cp-time{color:var(--zap)}
+#app .camp-pairs[data-clock=final] .cp-time,#app .camp-pairs[data-clock=out] .cp-time{color:#ff9d8c}
+#app .camp-pairs .cp-peek{border:3px solid var(--ink);background:var(--zap);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+#app .camp-pairs .cp-peek__n{background:var(--ink);color:var(--zap)}
+#app .camp-pairs .cp-peek:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+#app .camp-pairs .cp-peek.is-spent,#app .camp-pairs .cp-peek.is-spent:disabled{opacity:1;background:#e9dfc4;color:#3d4f4a;box-shadow:none;border-style:dashed}
+#app .camp-pairs .cp-peek.is-spent .cp-peek__n{background:#3d4f4a;color:#e9dfc4}
+#app .camp-pairs .cp-back{box-shadow:inset 0 0 0 3px var(--ink),inset 0 0 0 5px var(--cp-edge),3px 4px 0 var(--ink)}
+#app .camp-pairs .cp-face{background:radial-gradient(circle at 50% 42%,#fffdf6 0,#fffdf6 30%,var(--cp-tint,#fff2d7) 100%);box-shadow:inset 0 0 0 3px var(--ink),3px 4px 0 var(--ink)}
+#app .camp-pairs .cp-card.is-picked .cp-face{box-shadow:inset 0 0 0 3px var(--ink),0 0 0 3px var(--zap),3px 4px 0 3px var(--ink)}
+#app .camp-pairs .cp-card.is-matched .cp-face{box-shadow:inset 0 0 0 3px var(--ink),0 0 0 3px var(--mint),3px 4px 0 3px var(--ink)}
+#app .camp-pairs .cp-card.is-miss .cp-face{box-shadow:inset 0 0 0 3px var(--ink),0 0 0 3px var(--pop),3px 4px 0 3px var(--ink)}
+#app .camp-pairs .cp-card.is-golden .cp-face{box-shadow:inset 0 0 0 3px var(--ink),0 0 0 3px var(--zap),3px 4px 0 3px var(--ink)}
+#app .camp-pairs .cp-card.is-matched .cp-face::after{background-color:var(--mint);box-shadow:0 0 0 2px var(--ink)}
+#app .camp-pairs .cp-pop{color:var(--paper);text-shadow:-2px 0 var(--ink),2px 0 var(--ink),0 -2px var(--ink),0 2px var(--ink),2px 3px 0 var(--ink)}
+#app .camp-pairs .cp-pop.is-hot,#app .camp-pairs .cp-pop.is-gold{color:var(--zap)}
+#app .camp-pairs .cp-pop small{border:2px solid var(--paper);background:var(--ink);color:var(--zap)}
+#app .camp-pairs .cp-pop.is-lost{border:2px solid var(--ink);background:var(--paper);color:var(--ink)}
+#app .camp-pairs .cp-banner{border:4px solid var(--ink);border-radius:22px;background:var(--paper);color:var(--ink);box-shadow:6px 6px 0 var(--ink)}
+#app .camp-pairs .cp-banner small{color:var(--grape)}
+#app .camp-pairs .cp-banner[data-kind=streak]{background:var(--zap)}
+#app .camp-pairs .cp-banner[data-kind=streak] small{color:var(--ink)}
+#app .camp-pairs .cp-banner[data-kind=perfect]{background:var(--zap);color:var(--ink)}
+#app .camp-pairs .cp-banner[data-kind=perfect] small{color:var(--ink)}
+#app .camp-pairs .cp-banner[data-kind=lost]{background:var(--sky)}
+#app .camp-pairs .cp-banner[data-kind=lost] small{color:var(--ink)}
+
+/* ---- camp top bar and footer ----------------------------------------------- */
+#app .topbar .wordmark{color:var(--ink);font-weight:400;letter-spacing:-.02em;white-space:nowrap}
+#app .topbar .wordmark>svg{box-sizing:content-box;padding:5px;border:3px solid var(--ink);border-radius:50%;background:var(--zap);color:var(--ink);box-shadow:3px 3px 0 var(--ink);rotate:-4deg}
+#app .topbar .wordmark b{display:inline-block;padding:0 6px 1px;border-radius:7px;background:var(--pop);color:#fff;font-weight:400;rotate:-2deg}
+#app .topbar .wordmark small{display:block;margin-top:5px;font-weight:900;letter-spacing:.08em;color:var(--ink)}
+#app .topbar .wallet{padding:4px 11px 4px 8px;border:2px solid var(--ink);border-radius:999px;background:var(--paper);color:var(--ink);font-weight:900;box-shadow:2px 2px 0 var(--ink)}
+#app .topbar .wallet svg{color:var(--pop)}
+#app .topbar .icon-button{background:var(--mint);color:var(--ink);font-weight:900;transition:transform .08s,box-shadow .08s}
+#app .topbar #help-button{background:var(--zap)}
+#app .topbar .icon-button:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+#app .topnav button{color:var(--ink);font-weight:900}
+#app .below-game p{justify-self:center;padding:8px 14px;border:2px solid var(--ink);border-radius:20px;text-align:center;background:var(--paper);color:var(--ink);font-weight:800;box-shadow:3px 3px 0 var(--ink)}
+#app .below-game p svg{flex:none;width:14px;height:14px;color:var(--pop)}
+#app .below-game>div{color:var(--ink);font-weight:800}
+#app .below-game button{color:var(--ink);font-weight:900;text-decoration-thickness:2px;text-decoration-color:var(--pop)}
+
+/* ---- motion ---------------------------------------------------------------- */
+@keyframes hud2-wobble{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg) scale(1.06)}}
+@keyframes hud2-ready{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(-2deg) scale(1.05)}}
+@keyframes hud2-tap{0%{transform:scale(1);box-shadow:3px 3px 0 var(--ink),0 0 0 0 #ffd23f}40%{transform:scale(.82)}100%{transform:scale(1);box-shadow:3px 3px 0 var(--ink),0 0 0 18px #ffd23f00}}
+html[data-reduced-motion=true] #app :is(.hud-timer.final,.layer.power.ready,.coach-hand){animation:none!important}
+html[data-reduced-motion=true] #app :is(.hud-pause,.obj,.layer,.topbar .icon-button){transition:none!important}
+@media (prefers-reduced-motion:reduce){
+ #app :is(.hud-timer.final,.layer.power.ready,.coach-hand){animation:none!important}
+ #app :is(.hud-pause,.obj,.layer,.topbar .icon-button){transition:none!important}
+}
+@media (max-width:400px){
+ #app .topbar .wordmark{font-size:17px;gap:6px}
+ #app .topbar .wordmark>svg{width:22px;height:22px;padding:4px;border-width:2px;box-shadow:2px 2px 0 var(--ink)}
+ #app .topbar .wordmark b{padding:0 4px 1px}
+ #app .topbar .wallet{padding:3px 8px 3px 6px;margin-right:0}
+ #app .topbar .top-actions{gap:6px}
+}
+@media (max-width:359px){
+ #app .topbar .wordmark{font-size:15px;gap:5px}
+ #app .topbar .wordmark>svg{width:18px;height:18px;padding:3px}
+ #app .topbar .wordmark small{letter-spacing:0}
+ #app .topbar{gap:4px}
+ #app .topbar .wallet{padding:2px 5px 2px 4px;gap:2px;font-size:12px}
+ #app .topbar .top-actions{gap:4px}
+}
+/* A 320 px phone has no room for the wide shadow on the big camp cards. */
+@media (max-width:359px){#app :is(.daily-card,.quest-preview,.world-stage){box-shadow:3px 3px 0 var(--ink);margin-right:4px}}

@@ -1,18 +1,18 @@
-const CACHE='doodle-onward-journey-v24';
+const CACHE='doodle-onward-journey-v25';
 const OWNED_PREFIXES=['doodle-onward-','boerne-doodlin-','griffin-snack-patrol-'];
 const CORE=[
-  '/','/index.html','/style.css?v=24','/minigames.css?v=24','/manifest.webmanifest',
-  '/game.js?v=24','/platform-engine.js?v=24','/world-levels.js?v=24',
-  '/scout-engine.js?v=24','/journey.js?v=24','/platform-renderer.js?v=24',
-  '/rally3d.js?v=24','/memory-game.js?v=24','/snack-engine.js?v=24',
-  '/renderer.js?v=24','/adventure-engine.js?v=24','/characters.js?v=24',
-  '/audio.js?v=24','/celebrations.js?v=24','/fx.js?v=24','/scout-view.js?v=24',
-  '/hud.js?v=24','/controls.js?v=24','/haptics.js?v=24','/compat.js?v=24','/play.css?v=24','/camp.css?v=24',
-  '/assets/griffin-character-atlas.png?v=24','/assets/pumpkin-atlas.png?v=24',
-  '/assets/mittens-atlas.png?v=24','/assets/spike-atlas.png?v=24',
+  '/','/index.html','/style.css?v=25','/minigames.css?v=25','/manifest.webmanifest',
+  '/game.js?v=25','/platform-engine.js?v=25','/world-levels.js?v=25',
+  '/scout-engine.js?v=25','/journey.js?v=25','/platform-renderer.js?v=25',
+  '/rally3d.js?v=25','/memory-game.js?v=25','/snack-engine.js?v=25',
+  '/renderer.js?v=25','/adventure-engine.js?v=25','/characters.js?v=25',
+  '/audio.js?v=25','/celebrations.js?v=25','/fx.js?v=25','/scout-view.js?v=25',
+  '/hud.js?v=25','/controls.js?v=25','/haptics.js?v=25','/compat.js?v=25','/play.css?v=25','/camp.css?v=25',
+  '/assets/griffin-character-atlas.png?v=25','/assets/pumpkin-atlas.png?v=25',
+  '/assets/mittens-atlas.png?v=25','/assets/spike-atlas.png?v=25',
   '/assets/family-rv.png','/assets/route-biomes.jpg',
   '/assets/griffin-atlas.png', // Existing snack/obstacle props only.
-  '/assets/bookman-bold.otf','/assets/griffin-icon.png?v=24',
+  '/assets/bookman-bold.otf','/assets/griffin-icon.png?v=25',
   '/assets/mittens-photo.jpg','/assets/kevin-photo.jpg'
 ];
 const ALLOWED=new Set(CORE.map(path=>new URL(path,self.location.origin).href));

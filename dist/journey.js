@@ -1,4 +1,4 @@
-import { WORLDS, LEVELS } from './world-levels.js?v=24';
+import { WORLDS, LEVELS } from './world-levels.js?v=25';
 export { WORLDS, LEVELS };
 
 export const SAVE_KEY='doodle-onward-journey-v1';
@@ -103,7 +103,7 @@ const ACTIONS=['runs','wins','treats','score','distance','hits','dodged','powers
 function blankCounters(){return {...Object.fromEntries(ACTIONS.map(key=>[key,0])),bestCombo:0,bestMultiplier:1,characters:Object.fromEntries(CREW.map(id=>[id,{runs:0,wins:0,bestScore:0}]))};}
 function blankLevel(){return {unlocked:false,completed:false,medals:0,awards:{finish:false,gold:false,mastery:false},runs:0,bestScore:0,bestTreats:0,bestGold:0,bestCombo:0,bestMultiplier:1,bestTime:null};}
 function blankState(){return {
-  version:VERSION,wallet:0,selectedCharacter:'griffin',selectedWorld:0,settings:{sound:false,assist:false,reducedMotion:false},upgrades:{magnet:0,charge:0,heart:0},
+  version:VERSION,wallet:0,selectedCharacter:'griffin',selectedWorld:0,settings:{sound:true,assist:false,reducedMotion:false},upgrades:{magnet:0,charge:0,heart:0},
   worlds:WORLDS.map(world=>({id:world.id,index:world.index,unlocked:world.index===0,completed:false,clears:0,medals:0,rewarded:false})),
   levels:Object.fromEntries(LEVELS.map(level=>[level.id,blankLevel()])),
   quests:Object.fromEntries(QUESTS.map(quest=>[quest.id,{progress:0,completed:false,rewarded:false,seen:[]}])),

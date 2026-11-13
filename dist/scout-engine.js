@@ -13,7 +13,7 @@
 //   hint(), power(), interact()
 // Walking into a chest, the neighbour, or the RV uses it, so touch players never
 // need an interact button; interact() still works from the next tile.
-import {WORLDS} from './world-levels.js?v=24';
+import {WORLDS} from './world-levels.js?v=25';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,Number(n)||0));
 const copy=value=>JSON.parse(JSON.stringify(value));
 const hash=value=>{let n=2166136261;for(const c of String(value))n=Math.imul(n^c.charCodeAt(0),16777619);return n>>>0;};
