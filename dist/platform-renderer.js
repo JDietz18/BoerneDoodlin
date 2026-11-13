@@ -1,7 +1,7 @@
-import { Renderer } from './renderer.js?v=25';
-import { CHARACTER_ART } from './characters.js?v=25';
-import { drawScout, scoutEvent } from './scout-view.js?v=25';
-import { hash01, ease } from './fx.js?v=25';
+import { Renderer } from './renderer.js?v=26';
+import { CHARACTER_ART } from './characters.js?v=26';
+import { drawScout, scoutEvent } from './scout-view.js?v=26';
+import { hash01, ease } from './fx.js?v=26';
 
 const TAU=Math.PI*2, clamp=(n,a,b)=>Math.max(a,Math.min(b,n)), lerp=(a,b,t)=>a+(b-a)*t;
 const palettes=[
