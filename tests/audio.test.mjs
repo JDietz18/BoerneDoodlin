@@ -637,7 +637,7 @@ test('a full stack with every cue firing stays bounded and a jump still sounds',
     const mark = context.sources.length;
     sound.update(30, { running: true, intensity: 1, power: true });
     const late = context.sources.slice(mark);
-    assert.ok(late.length > 0 && late.length <= 16);
+    assert.ok(late.length > 0 && late.length <= 16, `late ${late.length}`);
     assert.ok(late.every(source => source.startAt >= context.currentTime && source.startAt < context.currentTime + .2));
     sound.suspend();
     assert.equal(context.active().length, 0);

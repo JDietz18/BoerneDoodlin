@@ -12,7 +12,7 @@ const workerSource=fs.readFileSync(new URL('../dist/sw.js',import.meta.url),'utf
 function workerHarness() {
   const listeners={},stores=new Map(),deleted=[],network=[];
   const state={offline:false,cacheBlocked:false,claimed:0,skipped:0,installed:[]};
-  for(const name of ['boerne-doodlin-adventure-v14','griffin-snack-patrol-v3','doodle-onward-journey-v22','unrelated-app-cache']) stores.set(name,new Map());
+  for(const name of ['boerne-doodlin-adventure-v14','griffin-snack-patrol-v3','doodle-onward-journey-v23','unrelated-app-cache']) stores.set(name,new Map());
   const key=input=>new URL(typeof input==='string'?input:input.url,ORIGIN).href;
   const caches={
     async open(name) {
@@ -105,7 +105,7 @@ test('every actual renderer image request, including versioned character atlases
   for(const art of Object.values(CHARACTER_ART)) {
     const request=requests.find(url=>new URL(url,ORIGIN).pathname===art.src);
     assert.ok(request,`Renderer requests ${art.src}`);
-    assert.equal(new URL(request,ORIGIN).search,'?v=23');
+    assert.equal(new URL(request,ORIGIN).search,'?v=24');
   }
   harness.state.offline=true;
   for(const request of requests) {
@@ -116,7 +116,7 @@ test('every actual renderer image request, including versioned character atlases
   }
   assert.equal(harness.network.length,0,'Offline artwork never falls through to the network');
   for(const module of ['game','platform-engine','world-levels','scout-engine','journey','platform-renderer','rally3d','memory-game','snack-engine','renderer','adventure-engine','characters','audio','celebrations']) {
-    const fetched=await harness.request(`/${module}.js?v=23`);
+    const fetched=await harness.request(`/${module}.js?v=24`);
     assert.equal(fetched.handled,true);assert.equal(fetched.response.ok,true);
   }
 });
@@ -133,8 +133,8 @@ test('navigation falls back offline while unrelated requests pass through and ca
   result=await harness.request('/index.html?reopened=1',{mode:'navigate'});
   assert.equal(await result.response.text(),`online:${ORIGIN}/`,'Fresh entry is retained for offline reopening');
   assert.equal((await harness.request('/private-data.json')).handled,false);
-  assert.equal((await harness.request('/game.js?v=23',{method:'POST'})).handled,false);
-  assert.equal((await harness.request('https://example.com/game.js?v=23')).handled,false);
+  assert.equal((await harness.request('/game.js?v=24',{method:'POST'})).handled,false);
+  assert.equal((await harness.request('https://example.com/game.js?v=24')).handled,false);
   harness.state.offline=false;harness.state.cacheBlocked=true;
   result=await harness.request('/',{mode:'navigate'});
   assert.equal(await result.response.text(),`online:${ORIGIN}/`);
@@ -146,9 +146,9 @@ test('updates wait for an explicit activation message and delete only obsolete o
   await harness.lifecycle('message',{data:{type:'IGNORED'}});assert.equal(harness.state.skipped,0);
   await harness.lifecycle('message',{data:{type:'SKIP_WAITING'}});assert.equal(harness.state.skipped,1);
   await harness.lifecycle('activate');
-  assert.deepEqual(harness.deleted,['boerne-doodlin-adventure-v14','griffin-snack-patrol-v3','doodle-onward-journey-v22']);
+  assert.deepEqual(harness.deleted,['boerne-doodlin-adventure-v14','griffin-snack-patrol-v3','doodle-onward-journey-v23']);
   assert.equal(harness.stores.has('unrelated-app-cache'),true);
-  assert.equal(harness.stores.has('doodle-onward-journey-v23'),true);
+  assert.equal(harness.stores.has('doodle-onward-journey-v24'),true);
   assert.equal(harness.state.claimed,1);
 });
 
@@ -174,6 +174,6 @@ test('the active module graph, stylesheet assets and installed-app icon are all 
   const manifest=JSON.parse(fs.readFileSync(new URL('../dist/manifest.webmanifest',import.meta.url),'utf8'));
   assert.equal(manifest.id,'/');assert.equal(manifest.scope,'/');assert.equal(manifest.start_url,'/?source=homescreen');
   for(const icon of manifest.icons)assertBundled(icon.src,'/manifest.webmanifest');
-  assert.ok(installed.has('/style.css?v=23'));assert.ok(installed.has('/minigames.css?v=23'));
-  assert.equal(installed.has('/progression.js?v=23'),false,'Legacy progression is retained in source, not loaded by the new entry');
+  assert.ok(installed.has('/style.css?v=24'));assert.ok(installed.has('/minigames.css?v=24'));
+  assert.equal(installed.has('/progression.js?v=24'),false,'Legacy progression is retained in source, not loaded by the new entry');
 });
