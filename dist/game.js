@@ -25,9 +25,11 @@ const renderer=new AdventureRenderer($('game')),audio=new GameAudio({enabled:jou
 let rallyRenderer=null,memoryGame=null;
 // Preferences that belong to this device rather than to the travelling save.
 const PREFS_KEY='doodle-onward-device-v1';
-const prefs={haptics:true,tilt:false,fastRoad:false,coached:{}};
-try{const saved=JSON.parse(storage?.getItem(PREFS_KEY)||'{}');for(const key of ['haptics','tilt','fastRoad'])if(typeof saved[key]==='boolean')prefs[key]=saved[key];for(const mode of Object.keys(saved.coached||{}))if(saved.coached[mode]===true)prefs.coached[mode]=true;}catch{/* defaults */}
+const prefs={haptics:true,tilt:false,fastRoad:false,musicOffered:false,coached:{}};
+try{const saved=JSON.parse(storage?.getItem(PREFS_KEY)||'{}');for(const key of ['haptics','tilt','fastRoad','musicOffered'])if(typeof saved[key]==='boolean')prefs[key]=saved[key];for(const mode of Object.keys(saved.coached||{}))if(saved.coached[mode]===true)prefs.coached[mode]=true;}catch{/* defaults */}
 function savePrefs(){try{storage?.setItem(PREFS_KEY,JSON.stringify(prefs));}catch{/* session only */}}
+// Music starts on. Older saves began with it off, so each phone is switched on once; after that the sound button decides.
+if(!prefs.musicOffered){prefs.musicOffered=true;journey.setSetting('sound',true);audio.setEnabled(true);savePrefs();}
 const haptics=new Haptics({enabled:prefs.haptics}),hud=new Hud($);
 const coarsePointer=window.matchMedia('(pointer:coarse)');
 let inputMode=coarsePointer.matches?'touch':'keys',finaleTimer=0,resultStep=null,lastTier=0,lastCombo=0,wakeLock=null,wantAwake=false,wakePending=false,dirty=true,frameCount=0,frameFailed=false,insetTime=0,fxBusy=true,coachTime=0,lastSign='',tipTime=0,rallyStartX=0,rallyLastDx=0,resultAt=-1e9,pausedAt=-1e9;
