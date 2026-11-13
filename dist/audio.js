@@ -144,6 +144,10 @@ const frequency = midi => 440 * 2 ** ((midi - 69) / 12);
 // High notes read as louder (and phone speakers favour them), so ease them back.
 const tilt = freq => clamp((620 / freq) ** .3, .5, 1.25);
 const audioConstructor = () => globalThis.AudioContext || globalThis.webkitAudioContext;
+// iPhone treats web sound as "ambient", which the ring switch silences. Asking
+// for the playback session (Safari 16.4 and later) lets the game be heard with
+// the switch off; handing it back when muted lets other apps carry on.
+const claimSession = on => { try { const session = globalThis.navigator?.audioSession; if (session && session.type !== (on ? 'playback' : 'auto')) session.type = on ? 'playback' : 'auto'; } catch {} };
 const noop = () => {};
 const YES = Promise.resolve(true), NO = Promise.resolve(false);
 
@@ -558,6 +562,7 @@ export class GameAudio {
         if (this._revivals === 1) nudge = true;
         else this._dropContext();
       }
+      claimSession(true);
       if (!this._ctx || this._ctx.state === 'closed') this._createContext();
       if (!this._ctx) return NO;
       const ctx = this._ctx;
@@ -589,7 +594,7 @@ export class GameAudio {
     if (next === this.enabled) return this.enabled;
     this.enabled = next;
     ++this._epoch;
-    if (!next) this.suspend();
+    if (!next) { this.suspend(); claimSession(false); }
     return this.enabled;
   }
 

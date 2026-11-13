@@ -675,3 +675,16 @@ test('older browsers without echo, panner, compressor or custom waves still play
     assert.ok(context.nodes.every(node => node.disconnected));
   } finally { done(); }
 });
+
+test('unlocking asks iPhone for the playback session, and muting hands it back', async () => {
+  const browser = browserAudio(); const session = { type: 'auto' };
+  globalThis.navigator.audioSession = session;
+  const sound = new GameAudio({ enabled: true });
+  try {
+    assert.equal(session.type, 'auto');
+    await sound.unlock();
+    assert.equal(session.type, 'playback');
+    sound.setEnabled(false);
+    assert.equal(session.type, 'auto');
+  } finally { sound.destroy(); browser.restore(); }
+});
