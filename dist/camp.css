@@ -199,3 +199,27 @@ html[data-reduced-motion=true] #app .arcade-live i{transform:none}
 #app .panel-dialog .install-image{border:var(--edge);border-radius:22px;box-shadow:var(--drop)}
 #app .panel-dialog .share-url,#app .panel-dialog .paste-row textarea{border:2px solid var(--ink);border-radius:12px}
 html[data-reduced-motion=true] #app .panel-dialog *{transition:none!important}
+
+/* ---- pause and result cards ------------------------------------------------ */
+#app :is(.pause-card,.result-card){border:var(--edge);border-radius:26px;background:var(--paper);color:var(--ink);box-shadow:8px 8px 0 var(--ink)}
+#app :is(.pause-card,.result-card) .eyebrow{display:inline-block;padding:4px 10px;border-radius:6px;background:var(--ink);color:var(--zap);font-weight:900;letter-spacing:.05em;transform:rotate(-1.2deg)}
+#app :is(.pause-card,.result-card) h2{color:var(--ink);text-transform:uppercase;line-height:1;letter-spacing:-.01em}
+#app :is(.pause-card,.result-card) p{color:var(--ink)}
+#app :is(.pause-card,.result-card) .primary{border:var(--edge);border-radius:18px;background:var(--zap);color:var(--ink);font-weight:900;box-shadow:var(--drop);transition:transform .08s,box-shadow .08s}
+#app :is(.pause-card,.result-card) .secondary{border:2px solid var(--ink);border-radius:999px;background:var(--mint);color:var(--ink);font-weight:900;box-shadow:3px 3px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+#app :is(.pause-card,.result-card) :is(.primary,.secondary):active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+#app :is(.pause-card,.result-card) .text-button{color:var(--ink);font-weight:800;text-decoration-thickness:2px}
+#app .pause-card canvas{border:var(--edge);border-radius:50%;background:var(--sky);box-shadow:3px 3px 0 var(--ink)}
+#app .result-medals svg{fill:#d9cfb6}
+#app .result-medals svg.earned{fill:var(--zap);stroke:var(--ink);stroke-width:1.2;filter:drop-shadow(3px 3px 0 var(--ink))}
+#app .result-record{border:2px solid var(--ink);border-radius:999px;background:var(--pop);color:#fff;font-weight:900;box-shadow:3px 3px 0 var(--ink);transform:rotate(-2deg)}
+#app .result-stats{border-top:var(--edge);border-bottom:var(--edge)}
+#app .result-stats strong{color:var(--pop);font-size:34px}
+#app .result-stats span{color:var(--ink);font-weight:900}
+#app .result-goals>span{border:2px dashed var(--ink);background:#fff;color:#5a6b66;font-weight:800}
+#app .result-goals>span.done{border-style:solid;background:var(--mint);color:var(--ink)}
+#app .reward-line{display:inline-block;padding:6px 12px;border-radius:10px;background:var(--ink);color:var(--zap);font-weight:900}
+#app .result-unlocks{border:2px solid var(--ink);border-radius:12px;background:var(--grape);color:#fff;font-weight:800;padding:8px 12px}
+#app .pause-card{padding:22px 18px 20px}
+#app .result-card p.reward-line{color:var(--zap)}
+#app .result-card p.result-unlocks{color:#fff}

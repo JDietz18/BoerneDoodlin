@@ -671,7 +671,7 @@ export class GameAudio {
     this._musicPlaying = true;
     const theme = THEMES[this.theme];
     const lift = this._intensity;
-    const sceneLevel = this.scene === 'run' ? .66 + .24 * lift : this.scene === 'menu' ? .6 : .5;
+    const sceneLevel = this.scene === 'run' ? .72 + .24 * lift : this.scene === 'menu' ? .6 : .5;
     const level = sceneLevel * theme.level * (now < this._duckUntil ? .42 : 1);
     if (Math.abs(level - this._musicLevel) > .005) {
       this._musicLevel = level;
@@ -685,11 +685,12 @@ export class GameAudio {
     // Audio-clock scheduling tolerates normal frame jitter. Long frame gaps drop
     // missed notes rather than catching up in an unpleasant burst.
     if (!this._nextStep || this._nextStep < now - .06) this._nextStep = now + .025;
-    const pace = this.scene === 'run' ? 1 + (this._speed - 1) * .075 + this._power * .04 + lift * .05
+    // A run plays at adventure pace: quicker than camp, and quicker again as the stack climbs.
+    const pace = this.scene === 'run' ? 1.13 + (this._speed - 1) * .075 + this._power * .05 + lift * .09
       : this.scene === 'menu' ? .76 : .68;
     const sixteenth = 60 / (theme.bpm * pace) / 4;
     let scheduled = 0;
-    while (this._nextStep < now + .105 && scheduled < 4) {
+    while (this._nextStep < now + .105 && scheduled < 3) {
       this._musicStep(this._step, this._nextStep);
       this._nextStep += sixteenth * (this._step % 2 === 0 ? 1 + theme.swing : 1 - theme.swing);
       this._step = (this._step + 1) % 256;
@@ -935,9 +936,10 @@ export class GameAudio {
     }
     const low = theme.bass[beat];
     if (low !== undefined && (!calm || beat === 0)) note(low, 0, calm ? .5 : theme.pads ? .6 : .3, .07, 'bass', 0, .1);
-    else if (drive && beat % 4 === 2) note(beat % 8 === 2 ? 7 : 4, 0, .12, .055, 'bass');
-    if (!calm && (theme.kick.includes(beat) || (drive && beat % 4 === 0))) {
-      this._tone({ freq: 300, end: 80, duration: .09, gain: .07, kind: 'thump', time, group: 'music', priority: 0 });
+    // On the trail the bass gallops (long, short-short) like hooves under the tune.
+    else if (!calm && (beat % 8 === 3 || beat % 8 === 6 || (drive && beat % 8 === 2))) note(beat % 8 === 6 ? 4 : beat % 8 === 2 ? 7 : 0, 0, .11, .058, 'bass');
+    if (!calm && (theme.kick.includes(beat) || beat % 4 === 0)) {
+      this._tone({ freq: 300, end: 80, duration: .09, gain: beat % 8 === 0 ? .075 : .06, kind: 'thump', time, group: 'music', priority: 0 });
     }
     if ((beat === 0 || beat === 8) && (calm || theme.pads || lift > .2 || power > .35)) {
       note(2, 12, .9, .04, 'pad', .25, .4);
@@ -956,6 +958,19 @@ export class GameAudio {
       if (theme.click) this._tone({ freq: theme.click, duration: .04, gain: .045, kind: 'wood', time, pan: .25, group: 'music', priority: 0 });
       else tap(.06, theme.snap, .085, .25);
     }
+    // The call to adventure: a strong chord on every downbeat and a crash at the top of each tune.
+    if (beat === 0) {
+      note(4, 12, .2, .05, 'pluck', .15, .05);
+      if (bar % 8 === 0) tap(.3, 7200, .04, 0, .4);
+    }
+    // The tune rides with a harmony a third above, the way two horns would play it.
+    if (degree !== null && lift > .7 && beat % 4 === 0) note(degree + 2, theme.octave, Math.min(.2, theme.hold * .8), .042 * theme.gain, theme.lead, .2, .05);
+    // Every fourth bar ends on a drum roll down the toms; every eighth climbs into the next round.
+    if (bar % 4 === 3 && beat >= 12) {
+      const tom = [230, 190, 155, 125][beat - 12];
+      this._tone({ freq: tom, end: tom * .6, duration: .12, gain: .062, kind: 'thump', time, pan: (beat - 13.5) * .25, group: 'music', priority: 0 });
+    }
+    if (bar % 8 === 7 && beat >= 8) note(beat - 8, theme.octave + 12, .09, .03 + .012 * lift, 'chime', .4);
     // The stack's own players: a bright arpeggio first, then a doubled tune
     // and a busier kit once the stack is tall.
     if (lift > .42 && beat % theme.arp.every === 0) {
@@ -963,7 +978,7 @@ export class GameAudio {
       note(notes[Math.floor(step / theme.arp.every) % notes.length], theme.arp.octave, .13,
         .02 + .045 * clamp((lift - .42) / .4, 0, 1), theme.arp.kind, .5);
     }
-    if (drive && degree !== null) note(degree, theme.octave + 12, .1, .03, 'chime', .25);
+    if (drive && degree !== null && beat % 4 !== 0) note(degree, theme.octave + 12, .1, .03, 'chime', .25);
     if (power > .5 && beat % 4 === 2) note([4, 7, 5, 2][Math.floor(beat / 4)], 24, .11, .05, 'pluck', -.5);
     if (theme.hat.includes(beat) || (lift > .22 && beat % 2 === 1) || (drive && beat % 2 === 0)) {
       tap(.03, 5200, lift > .22 ? .034 : .026, -.25);

@@ -10,8 +10,8 @@
 //                                          forgiving snapping; also understands
 //                                          taps on the corner mini-map
 // Nothing here changes the run: it only reads engine state and engine events.
-import {hash01,ease} from './fx.js?v=23';
-import {ABILITIES} from './characters.js?v=23';
+import {hash01,ease} from './fx.js?v=24';
+import {ABILITIES} from './characters.js?v=24';
 
 const TAU=Math.PI*2,GROUND=.8,HOP=.13,LAND=.14;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
