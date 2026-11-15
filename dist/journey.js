@@ -1,8 +1,11 @@
-import { WORLDS, LEVELS } from './world-levels.js?v=26';
+import { WORLDS, LEVELS } from './world-levels.js?v=27';
 export { WORLDS, LEVELS };
 
 export const SAVE_KEY='doodle-onward-journey-v1';
-export const MODES=['platform','scout','snack','memory','rally'];
+export const MODES=['platform','scout','snack','memory','rally','bubble'];
+// The modes the daily adventure and the "Five ways to play" achievement were built on. Bubble Pop is a sixth
+// way to play, but it must not change which daily an existing date produces, so it stays out of both.
+const CLASSIC_MODES=['platform','scout','snack','memory','rally'];
 const LEGACY_KEY='boerne-doodlin-adventure-v2';
 const VERSION=1,LIMIT=1_000_000_000,RECEIPT_LIMIT=384;
 const CREW=['griffin','kevin','mittens','spike'];
@@ -66,7 +69,7 @@ export const ACHIEVEMENTS=[
 export const STICKERS=[
   ...WORLDS.map(world=>({id:`world-${world.id}`,name:world.name,description:`Clear four ${world.name} levels.`,kind:'world',worldIndex:world.index})),
   ...CREW.map(id=>({id:`crew-${id}`,name:NAMES[id],description:`Play an activity with ${NAMES[id]}.`,kind:'crew',characterId:id})),
-  ...MODES.map(mode=>({id:`mode-${mode}`,name:({platform:'Pawprints',scout:'Treasure nose',snack:'Snack Storm',memory:'Memory keeper',rally:'Home on wheels'})[mode],description:'Finish this activity.',kind:'mode',mode}))
+  ...MODES.map(mode=>({id:`mode-${mode}`,name:({platform:'Pawprints',scout:'Treasure nose',snack:'Snack Storm',memory:'Memory keeper',rally:'Home on wheels',bubble:'Bubble popper'})[mode],description:'Finish this activity.',kind:'mode',mode}))
 ];
 
 const int=(value,max=LIMIT)=>Number.isFinite(Number(value))?Math.max(0,Math.min(max,Math.floor(Number(value)))):0;
@@ -143,7 +146,7 @@ function refreshPassport(state) {
   }
   const earned={
     'first-pawprints':count.clears>0,'whole-crew':CREW.every(id=>state.counters.characters[id].runs>0),
-    'five-ways':MODES.every(mode=>state.records[mode].wins>0),'full-stack':state.counters.bestMultiplier>=30,
+    'five-ways':CLASSIC_MODES.every(mode=>state.records[mode].wins>0),'full-stack':state.counters.bestMultiplier>=30,
     'family-home':state.worlds.every(world=>world.completed),'every-detour':count.clears===30,
     'ninety-medals':count.medals===90,'family-favors':count.quests===20,'secret-friend':state.counters.secrets>=10
   };
@@ -226,9 +229,9 @@ export class Journey {
     return [{id:'finish',label:'Reach the RV',metric:'won',target:1},{id:'gold',label:`Find all ${level.goldTarget} gold`,metric:'gold',target:level.goldTarget},{id:'mastery',label:`No hits or under ${level.parTime}s`,metric:'cleanOrTime',target:level.parTime,maxHits:0}];
   }
   getDailyChallenge(date) {
-    const dailyDate=localDateKey(date??new Date()),seed=seedValue(hash(`doodle-onward-daily-v1:${dailyDate}`)),mode=MODES[seed%MODES.length],worldIndex=(seed>>>5)%WORLDS.length;
+    const dailyDate=localDateKey(date??new Date()),seed=seedValue(hash(`doodle-onward-daily-v1:${dailyDate}`)),mode=CLASSIC_MODES[seed%CLASSIC_MODES.length],worldIndex=(seed>>>5)%WORLDS.length;
     const level=LEVELS.filter(item=>item.worldIndex===worldIndex)[(seed>>>12)%6],saved=this.state.daily.history[dailyDate];
-    return {id:`daily-${dailyDate}`,title:'Today’s family adventure',description:`${({platform:'Platform adventure',scout:'Treasure scout',snack:'Snack Storm',memory:'Memory match',rally:'RV rally'})[mode]} in ${WORLDS[worldIndex].name}`,mode,worldIndex,levelId:mode==='platform'?level.id:null,seed,remix:mode==='platform',dailyDate,bonus:80,claimed:saved?.bonusClaimed===true,bestScore:saved?.score||0};
+    return {id:`daily-${dailyDate}`,title:'Today’s family adventure',description:`${({platform:'Platform adventure',scout:'Treasure scout',snack:'Snack Storm',memory:'Memory match',rally:'RV rally',bubble:'Bubble Pop'})[mode]} in ${WORLDS[worldIndex].name}`,mode,worldIndex,levelId:mode==='platform'?level.id:null,seed,remix:mode==='platform',dailyDate,bonus:80,claimed:saved?.bonusClaimed===true,bestScore:saved?.score||0};
   }
   getRunConfig({mode='platform',levelId,worldIndex,seed,remix=false,dailyDate,characterId}={}) {
     if(!MODES.includes(mode))mode='platform';

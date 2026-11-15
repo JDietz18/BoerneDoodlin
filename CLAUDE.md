@@ -34,6 +34,7 @@ usual way to check a change; look at the screenshots, do not just read numbers.
 | `dist/scout-engine.js`, `dist/scout-view.js` | Trail Scout |
 | `dist/rally3d.js` | RV Rally simulation and both 3D renderers |
 | `dist/snack-engine.js`, `dist/renderer.js` | Snack Storm, shared sprite loader, camp hero scene |
+| `dist/bubble-engine.js`, `dist/bubble-view.js` | Bubble Pop: simulation, and its drawing on the shared `#game` canvas |
 | `dist/memory-game.js`, `dist/minigames.css` | Camp Pairs |
 | `dist/journey.js` | Progression authority: saves, rewards, quests, charms, daily |
 | `dist/audio.js`, `dist/celebrations.js` | Sound and result-screen confetti |

@@ -14,6 +14,7 @@ On a phone a run takes the whole screen, in either orientation, and **the play f
 | Trail Scout | Swipe to step and keep dragging to keep walking, or tap a tile (or the corner map) to go there. Press and hold for a hint. Two fingers use your power. | Arrows or WASD, E to interact, H for a hint, X for power |
 | RV Rally | Drag anywhere to steer. Pull back, or rest a second finger, to brake. Flick up to boost. Tilt steering is an option in the guide. | Left/Right or A/D, Down/S to brake, X to boost |
 | Snack Storm | Drag to catch. Flick up for your power. | Left/Right or A/D, X for power |
+| Bubble Pop | Tap a bubble to pop it. Drag through a line of treat bubbles for a string bonus, and leave the prickly burrs alone. Two fingers use your power. | Arrows move the marker, Space pops, X for power |
 | Camp Pairs | Tap the cards. | Tab to a card, Enter or Space |
 
 The glowing power layer at the top of the screen can always be tapped as well, even with a thumb already on the field. P or Escape pauses on a keyboard; the pause button is in the top corner. Real buttons for every action stay available to keyboard, switch, and screen reader users and appear only when focused.
@@ -55,6 +56,7 @@ This is a static ES-module game. `dist/` is the complete site; there is no packa
 | `rally3d.js` | RV driving simulation and the 3D renderers |
 | `memory-game.js`, `minigames.css` | Camp Pairs |
 | `snack-engine.js`, `renderer.js` | Snack Storm, the shared character-art loader, and the camp scene |
+| `bubble-engine.js`, `bubble-view.js` | Bubble Pop, a 45-second tap-and-drag mini game |
 | `journey.js` | Progression, quests, gear, charms, passport, records, migration, and checkpoints |
 | `characters.js`, `audio.js`, `celebrations.js` | Family identities, sound, and celebrations |
 | `sw.js`, `manifest.webmanifest` | Offline release bundle and installed-app metadata |

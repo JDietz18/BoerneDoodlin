@@ -1,18 +1,18 @@
-const CACHE='doodle-onward-journey-v26';
+const CACHE='doodle-onward-journey-v27';
 const OWNED_PREFIXES=['doodle-onward-','boerne-doodlin-','griffin-snack-patrol-'];
 const CORE=[
-  '/','/index.html','/style.css?v=26','/minigames.css?v=26','/manifest.webmanifest',
-  '/game.js?v=26','/platform-engine.js?v=26','/world-levels.js?v=26',
-  '/scout-engine.js?v=26','/journey.js?v=26','/platform-renderer.js?v=26',
-  '/rally3d.js?v=26','/memory-game.js?v=26','/snack-engine.js?v=26',
-  '/renderer.js?v=26','/adventure-engine.js?v=26','/characters.js?v=26',
-  '/audio.js?v=26','/celebrations.js?v=26','/fx.js?v=26','/scout-view.js?v=26',
-  '/hud.js?v=26','/controls.js?v=26','/haptics.js?v=26','/compat.js?v=26','/play.css?v=26','/camp.css?v=26',
-  '/assets/griffin-character-atlas.png?v=26','/assets/pumpkin-atlas.png?v=26',
-  '/assets/mittens-atlas.png?v=26','/assets/spike-atlas.png?v=26',
+  '/','/index.html','/style.css?v=27','/minigames.css?v=27','/manifest.webmanifest',
+  '/game.js?v=27','/platform-engine.js?v=27','/world-levels.js?v=27',
+  '/scout-engine.js?v=27','/journey.js?v=27','/platform-renderer.js?v=27',
+  '/rally3d.js?v=27','/memory-game.js?v=27','/snack-engine.js?v=27','/bubble-engine.js?v=27','/bubble-view.js?v=27',
+  '/renderer.js?v=27','/adventure-engine.js?v=27','/characters.js?v=27',
+  '/audio.js?v=27','/celebrations.js?v=27','/fx.js?v=27','/scout-view.js?v=27',
+  '/hud.js?v=27','/controls.js?v=27','/haptics.js?v=27','/compat.js?v=27','/play.css?v=27','/camp.css?v=27',
+  '/assets/griffin-character-atlas.png?v=27','/assets/pumpkin-atlas.png?v=27',
+  '/assets/mittens-atlas.png?v=27','/assets/spike-atlas.png?v=27',
   '/assets/family-rv.png','/assets/route-biomes.jpg',
   '/assets/griffin-atlas.png', // Existing snack/obstacle props only.
-  '/assets/bookman-bold.otf','/assets/griffin-icon.png?v=26',
+  '/assets/bookman-bold.otf','/assets/griffin-icon.png?v=27',
   '/assets/mittens-photo.jpg','/assets/kevin-photo.jpg'
 ];
 const ALLOWED=new Set(CORE.map(path=>new URL(path,self.location.origin).href));
