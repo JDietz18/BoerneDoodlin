@@ -96,7 +96,7 @@ The new key is **`doodle-onward-journey-v1`**. Its state contains:
 - Wallet, selected character/world, settings, and three capped upgrade levels.
 - Five ordered world records and thirty level records with separate medal flags.
 - Twenty quest records, unlocked/equipped charms, and passport collections.
-- Separate records for each of the five modes.
+- Separate records for each of the six modes.
 - Action counters, per-character counters, and fractional best multipliers.
 - Date-specific Daily history, per-level checkpoints, and the last 384 run receipts.
 - A migration record and the complete legacy snapshot.
@@ -123,11 +123,11 @@ Sound is opt-in. Assist and reduced-motion preferences persist in the journey. T
 
 The score stack is the product of chain (up to 5×), frenzy (2×), Gold Rush (2×), and Griffin's power (1.5×), up to 30×. Records keep fractional multipliers such as 7.5×. The meter shows all four layers at all times; the frenzy bar rests while a frenzy is cooling down.
 
-## Offline release v26
+## Offline release v27
 
 The app remains on its existing URL and keeps manifest ID `/`, scope `/`, and start URL `/?source=homescreen`. Its display name is Doodle Onward. The approved Griffin icon and all four character atlases use `?v=25`.
 
-The worker cache is `doodle-onward-journey-v26`. The release bundle includes twenty active JavaScript modules, four stylesheets, the manifest, approved character art, shared scenery, icon, and font. Module queries and image request queries must match the precache exactly, and the install step asks the network for fresh copies so a phone never mixes an old module with a new page. `tests/release.test.mjs` fails if any file carries a different version.
+The worker cache is `doodle-onward-journey-v27`. The release bundle includes twenty-two active JavaScript modules, four stylesheets, the manifest, approved character art, shared scenery, icon, and font. Module queries and image request queries must match the precache exactly, and the install step asks the network for fresh copies so a phone never mixes an old module with a new page. `tests/release.test.mjs` fails if any file carries a different version.
 
 Navigation uses the network when available and falls back to the cached entry offline. Listed same-origin assets use the release cache. Arbitrary, non-GET, and cross-origin requests are not intercepted. Activation removes only obsolete `doodle-onward-`, `boerne-doodlin-`, and `griffin-snack-patrol-` caches.
 

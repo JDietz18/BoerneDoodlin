@@ -1,7 +1,8 @@
-import { Renderer } from './renderer.js?v=26';
-import { CHARACTER_ART } from './characters.js?v=26';
-import { drawScout, scoutEvent } from './scout-view.js?v=26';
-import { hash01, ease } from './fx.js?v=26';
+import { Renderer } from './renderer.js?v=27';
+import { CHARACTER_ART } from './characters.js?v=27';
+import { drawScout, scoutEvent } from './scout-view.js?v=27';
+import { drawBubble, bubbleEvent } from './bubble-view.js?v=27';
+import { hash01, ease } from './fx.js?v=27';
 
 const TAU=Math.PI*2, clamp=(n,a,b)=>Math.max(a,Math.min(b,n)), lerp=(a,b,t)=>a+(b-a)*t;
 const palettes=[
@@ -443,4 +444,6 @@ export class AdventureRenderer extends Renderer {
 
  drawScout(run,opts){drawScout(this,run,opts);}
  addScoutEvent(e,run){scoutEvent(this,e,run);}
+ drawBubble(run,opts){drawBubble(this,run,opts);}
+ addBubbleEvent(e,run){bubbleEvent(this,e,run);}
 }

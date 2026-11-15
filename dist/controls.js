@@ -10,6 +10,8 @@
 //   Rally     drag to steer (`drag.dx` is the finger's travel in px, `steering`
 //             the same as -1..1), pull back or a second finger to brake, flick up to boost
 //   Snack     drag to catch, flick up for power
+//   Bubble    tap to pop, drag to pop a string (the whole path is reported, not just where the finger ends),
+//             a second finger fires the power once it is charged (until then it pops on its own)
 
 const TAU=Math.PI*2;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -58,7 +60,7 @@ export class Controls {
       const at=this._local(canvas,e),t=this._now()/1000,p={id:e.pointerId,canvas,x0:at.x,y0:at.y,x:at.x,y:at.y,ax:at.x,ay:at.y,low:at.y,t0:t,flickT:-9,flickY:0,pullT:-9,pullY:0,edge:at.x<EDGE||at.x>at.w-EDGE,ht:new Float64Array(RECENT),hx:new Float32Array(RECENT),hy:new Float32Array(RECENT),hn:0,moved:false,spent:false,pulled:false,role:'action'};
       this._sample(p,t,at.x,at.y);let steering=this._role('move');
       // A hand gripping the very edge of the phone is not playing: the next finger takes over.
-      if(steering&&steering.edge&&!steering.moved){steering.role='rest';steering.spent=true;steering=null;}
+      if(steering&&steering.edge&&!steering.moved){if(this.mode==='bubble')this.on.bubbleUp?.(steering.id);steering.role='rest';steering.spent=true;steering=null;}
       this.pointers.set(e.pointerId,p);this.ripples.push({x:at.x,y:at.y,t:0});if(this.ripples.length>8)this.ripples.shift();
       const m=this.mode;
       if(m==='platform'){
@@ -75,6 +77,10 @@ export class Controls {
       }else if(m==='snack'){
         if(steering){p.spent=true;this._power();}
         else{p.role='move';this.used.move=true;this.on.fieldX?.(clamp(at.x/at.w,0,1));}
+      }else if(m==='bubble'){
+        // A finger already on the glass plus a second one is the power, once it is charged. Before that every finger pops.
+        if(steering&&this.on.powerReady?.()){p.role='rest';p.spent=true;this._power();}
+        else{p.role='move';this.used.action=true;this.on.bubbleDown?.(e.pointerId,at.x,at.y,at.w,at.h);}
       }
     });
     canvas.addEventListener('pointermove',e=>{
@@ -115,6 +121,11 @@ export class Controls {
       }else if(m==='snack'&&p.role==='move'){
         this.on.fieldX?.(clamp(at.x/at.w,0,1));
         this._flick(p,t,at.x,at.y,rise,side);
+      }else if(m==='bubble'&&p.role==='move'){
+        // Every point the phone saw since the last event, so a fast swipe still reports its whole path.
+        if(p.moved)this.used.move=true;
+        const batch=e.getCoalescedEvents?.(),list=batch&&batch.length?batch:[e];
+        for(const point of list){const q=this._local(canvas,point);this.on.bubbleMove?.(e.pointerId,q.x,q.y,q.w,q.h);}
       }
     });
     const release=e=>{
@@ -130,6 +141,7 @@ export class Controls {
         if(p.role==='move'){this._steer=null;this.drag=null;this.on.steer?.(null);for(const o of this.pointers.values()){o.x0=o.x;o.y0=o.y;}}
         this.braking=!!this._role('brake')||[...this.pointers.values()].some(o=>o.pulled);this.on.brake?.(this.braking);
       }else if(m==='snack'&&p.role==='move'){this.on.fieldX?.(null);for(const o of this.pointers.values()){o.x0=o.x;o.y0=o.y;}}
+      else if(m==='bubble'&&p.role==='move')this.on.bubbleUp?.(e.pointerId);
     };
     for(const name of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(name,release);
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
@@ -156,7 +168,7 @@ export class Controls {
         const u=clamp((t-p.t0-HOLD_SHOW)/(HOLD-HOLD_SHOW),0,1);
         c.globalAlpha=.85;c.strokeStyle='#f6cc70';c.lineWidth=5;c.beginPath();c.arc(p.x,p.y,30,-Math.PI/2,-Math.PI/2+TAU*u);c.stroke();
       }
-      if(p.role==='move'&&this.mode!=='snack'){
+      if(p.role==='move'&&this.mode!=='snack'&&this.mode!=='bubble'){
         const dx=p.x-p.ax,dy=this.mode==='platform'?0:p.y-p.ay,far=Math.hypot(dx,dy);
         c.globalAlpha=.28;c.fillStyle='#fff4db';c.beginPath();c.arc(p.ax,this.mode==='platform'?p.y:p.ay,6,0,TAU);c.fill();
         if(far>DEAD){c.globalAlpha=.42;c.strokeStyle='#fff4db';c.lineWidth=5;c.beginPath();c.moveTo(p.ax,this.mode==='platform'?p.y:p.ay);c.lineTo(p.x,p.y);c.stroke();}

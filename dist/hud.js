@@ -44,7 +44,7 @@ export class Hud {
       :stat('treats','treats')+(mode==='rally'?stat('distance','m'):stat('gold','golden'));
     this.obj={keys:[...e.objectives.querySelectorAll('.keys svg')],golds:[...e.objectives.querySelectorAll('.golds svg')],secrets:e.objectives.querySelector('.secrets'),parcel:e.objectives.querySelector('.parcel i'),hint:e.objectives.querySelector('.hint-chip')};
     for(const id of ['pairs','misses','treats','distance','gold'])this.obj[id]=e.objectives.querySelector(`#obj-${id} b`);
-    const timed=mode==='snack'||mode==='rally';e.timer.hidden=!timed;e.timer.classList.remove('urgent','final');
+    const timed=mode==='snack'||mode==='rally'||mode==='bubble';e.timer.hidden=!timed;e.timer.classList.remove('urgent','final');
     const stacked=mode!=='memory';e.stack.hidden=!stacked;
     if(stacked){
       // The power layer doubles as the power button: tap it when it glows.
@@ -102,7 +102,7 @@ export class Hud {
       this.set('frenzy:cooling',n.frenzy.node,s.frenzy.cooling,(el,v)=>el.classList.toggle('cooling',v));
     }
     // Screen reader friendly summary line (also the desktop combo label).
-    this.text('combo',e.combo,run.combo>0?`${num(run.combo)} ${m==='memory'?'pair':'snack'} chain`:'');
+    this.text('combo',e.combo,run.combo>0?`${num(run.combo)} ${m==='memory'?'pair':m==='bubble'?'bubble':'snack'} chain`:'');
   }
 }
 
